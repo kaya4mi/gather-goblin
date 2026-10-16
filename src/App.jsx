@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import GatheringPlanner from "./components/GatheringPlanner";
 import Navbar from "./components/Navbar";
 import GoblinHero from "./components/GoblinHero";
 import FeatureCards from "./components/FeatureCards";
@@ -8,11 +9,6 @@ const details = {
     title: "Small goblin. Big friend energy.",
     text: "Meet your tiny chaos coordinator: a little helper for the endless “where should we go?” group chat. Good food, good company, and a little less planning.",
     note: "Made for indecisive friends, with love.",
-  },
-  gathering: {
-    title: "Good times are on the way.",
-    text: "A place to bring your people together, pick a plan, and skip the endless group chat.",
-    note: "Gathering planning is coming soon. For now, say hello to your goblin!",
   },
   food: {
     title: "Something yummy is coming.",
@@ -25,10 +21,26 @@ const details = {
     note: "Profiles are coming soon. Your goblin is making it cozy.",
   },
 };
+function subscribeToHash(callback) {
+  window.addEventListener("hashchange", callback);
+  return () => window.removeEventListener("hashchange", callback);
+}
 function App() {
+  const isPlanning = useSyncExternalStore(
+    subscribeToHash,
+    () => window.location.hash === "#plan",
+    () => false,
+  );
+  useEffect(() => {
+    if (isPlanning) document.getElementById("planner-title")?.focus();
+  }, [isPlanning]);
   const [selected, setSelected] = useState("about");
   const dialog = useRef(null);
   function openDetails(id) {
+    if (id === "gathering") {
+      window.location.hash = "plan";
+      return;
+    }
     setSelected(id);
     dialog.current.showModal();
   }
@@ -38,13 +50,16 @@ function App() {
         onAbout={() => openDetails("about")}
         onProfile={() => openDetails("profile")}
       />
-      <main>
+      <main hidden={isPlanning}>
         <GoblinHero />
         <FeatureCards onSelect={openDetails} />
         <p className="little-note">
           <span aria-hidden="true">♡</span> Good plans start with good company.
           We’ll handle the little things.
         </p>
+      </main>
+      <main hidden={!isPlanning}>
+        <GatheringPlanner />
       </main>
       <footer>
         <a className="footer-brand" href="#home">

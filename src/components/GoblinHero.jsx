@@ -68,7 +68,7 @@ export default function GoblinHero() {
           <br />
           Let your little goblin bring everyone together.
         </p>
-        <a className="hero-cta" href="#pick-your-adventure">
+        <a className="hero-cta" href="#plan">
           Let’s make a little plan <span aria-hidden="true">↘</span>
         </a>
         <span className="doodle hero-spark" aria-hidden="true">
