@@ -5,7 +5,7 @@ mkdirSync(outputDirectory, { recursive: true });
 function stripModuleSyntax(source) {
   return source.replace(/^import .*?;\n/gm, '').replace(/\bexport /g, '');
 }
-const files = ['web/art.mjs', 'web/planner.mjs', 'web/i18n.mjs', 'worker/api.mjs'];
+const files = ['web/art.mjs', 'web/planner.mjs', 'web/i18n.mjs', 'web/polls.mjs', 'worker/api.mjs'];
 const sharedCode = files.map(file => stripModuleSyntax(readFileSync(file, 'utf8'))).join('\n');
 const offlineAdapter = `
 const offlineKey = 'gg-offline-room-records';

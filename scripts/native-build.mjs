@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
 
 const apiSource = readFileSync('worker/api.mjs', 'utf8');
-const bundledApi = apiSource.replace(/^import .*?;\n/, '');
-const planner = readFileSync('web/planner.mjs', 'utf8');
+const bundledApi = apiSource.replace(/^import .*?;\n/gm, '');
+const planner = readFileSync('web/planner.mjs', 'utf8') + '\n' + readFileSync('web/polls.mjs', 'utf8');
 const assets = {};
 const files = [
   ['/', 'web/index.html', 'text/html'],
@@ -11,13 +11,14 @@ const files = [
   ['/art.mjs', 'web/art.mjs', 'text/javascript'],
   ['/planner.mjs', 'web/planner.mjs', 'text/javascript'],
   ['/i18n.mjs', 'web/i18n.mjs', 'text/javascript'],
+  ['/polls.mjs', 'web/polls.mjs', 'text/javascript'],
   ['/favicon.svg', 'public/favicon.svg', 'image/svg+xml'],
 ];
 for (const [url, file, mime] of files) {
   assets[url] = { body: readFileSync(file, 'utf8'), mime };
 }
 assets['/demo-api.mjs'] = {
-  body: apiSource.replace("'../web/planner.mjs'", "'./planner.mjs'"),
+  body: apiSource.replace("'../web/planner.mjs'", "'./planner.mjs'").replace("'../web/polls.mjs'", "'./polls.mjs'"),
   mime: 'text/javascript',
 };
 const handler = `

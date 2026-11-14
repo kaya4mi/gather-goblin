@@ -120,6 +120,420 @@ const ja = {
   footer:'みんなで集まる、そのために。', offline:'オフラインプレビュー。ルームはこの端末だけに保存されます。',
 };
 
+const additions = {
+  "Card games": [
+    "Card games",
+    "卡牌游戏",
+    "カードゲーム"
+  ],
+  "Board games": [
+    "Board games",
+    "桌游",
+    "ボードゲーム"
+  ],
+  "Cooking together": [
+    "Cooking together",
+    "一起做饭",
+    "一緒に料理"
+  ],
+  "Potluck": [
+    "Potluck / food sharing",
+    "带食物分享",
+    "持ち寄りごはん"
+  ],
+  "Drinks": [
+    "Drinks",
+    "喝一杯",
+    "飲み会"
+  ],
+  "Hiking": [
+    "Hiking",
+    "爬山",
+    "ハイキング"
+  ],
+  "Picnic": [
+    "Picnic",
+    "野餐",
+    "ピクニック"
+  ],
+  "Hot pot": [
+    "Hot pot",
+    "火锅",
+    "鍋"
+  ],
+  "BBQ": [
+    "BBQ",
+    "烧烤",
+    "バーベキュー"
+  ],
+  "Karaoke": [
+    "Karaoke",
+    "卡拉 OK",
+    "カラオケ"
+  ],
+  "Movies": [
+    "Movies",
+    "看电影",
+    "映画"
+  ],
+  "Video games": [
+    "Video games",
+    "电子游戏",
+    "ビデオゲーム"
+  ],
+  "Badminton": [
+    "Badminton",
+    "羽毛球",
+    "バドミントン"
+  ],
+  "Basketball": [
+    "Basketball",
+    "篮球",
+    "バスケットボール"
+  ],
+  "Cycling": [
+    "Cycling",
+    "骑行",
+    "サイクリング"
+  ],
+  "Photography": [
+    "Photography",
+    "摄影",
+    "写真散歩"
+  ],
+  "Museum": [
+    "Museum",
+    "逛展",
+    "美術館"
+  ],
+  "Shopping": [
+    "Shopping",
+    "逛街",
+    "買い物"
+  ],
+  "Study together": [
+    "Study together",
+    "一起学习",
+    "勉強会"
+  ],
+  "customActivity": [
+    "Add your own activity",
+    "添加自定义项目",
+    "やりたいことを追加"
+  ],
+  "activityPlaceholder": [
+    "e.g. Werewolf, baking, a birthday dinner",
+    "例如狼人杀、烘焙、生日聚餐",
+    "例：人狼、パン作り、誕生日会"
+  ],
+  "addActivity": [
+    "Add",
+    "添加",
+    "追加"
+  ],
+  "removeActivity": [
+    "Remove activity",
+    "移除项目",
+    "項目を削除"
+  ],
+  "pickLimit": [
+    "Choose up to 12 activities.",
+    "最多选择 12 个项目。",
+    "12個まで選べます。"
+  ],
+  "groupSize": [
+    "Expected group size",
+    "预计人数",
+    "予定人数"
+  ],
+  "people": [
+    "{count} people",
+    "{count} 人",
+    "{count}人"
+  ],
+  "showEveryone": [
+    "Show all {count} people",
+    "查看全部 {count} 人",
+    "全員（{count}人）を見る"
+  ],
+  "showLess": [
+    "Show fewer",
+    "收起",
+    "折りたたむ"
+  ],
+  "quickTools": [
+    "Little decisions",
+    "聚会小工具",
+    "ちょっとした決めごと"
+  ],
+  "lunchTool": [
+    "What’s for lunch?",
+    "今天中午吃什么？",
+    "今日のお昼、何にする？"
+  ],
+  "lunchHint": [
+    "Make a lunch vote and send the link.",
+    "发起午饭投票，把链接发给大家。",
+    "お昼の候補を投票で決めよう。"
+  ],
+  "voteTool": [
+    "Settle it with a vote",
+    "来投个票",
+    "みんなで投票"
+  ],
+  "voteHint": [
+    "Pick the food, game, day or next stop.",
+    "选吃什么、玩什么、哪天或下一站。",
+    "ごはん、ゲーム、日程、次の行き先。"
+  ],
+  "routeTool": [
+    "Put the stops in order",
+    "把路线排好",
+    "行き先を順番に"
+  ],
+  "routeHint": [
+    "Add real place names and open the whole route.",
+    "填写具体店名，一键打开整条路线。",
+    "具体的な店名を入れて、ルートを開こう。"
+  ],
+  "pollQuestion": [
+    "Your question",
+    "投票问题",
+    "投票の質問"
+  ],
+  "pollOptions": [
+    "Options, one per line",
+    "选项，每行一个",
+    "選択肢を1行ずつ"
+  ],
+  "pollOptionsHint": [
+    "2–12 options. Use exact shop names if you have them.",
+    "填写 2–12 个选项，也可以直接填具体店名。",
+    "2〜12個。具体的な店名でもOK。"
+  ],
+  "createVote": [
+    "Create a shared vote",
+    "发起共享投票",
+    "投票を作る"
+  ],
+  "votesTab": [
+    "Votes",
+    "投票",
+    "投票"
+  ],
+  "voteCount": [
+    "{count} votes",
+    "{count} 票",
+    "{count}票"
+  ],
+  "totalVotes": [
+    "{count} people voted · you can change your vote",
+    "{count} 人已投票，可修改自己的选择",
+    "{count}人が投票済み・変更できます"
+  ],
+  "voteName": [
+    "Your name to vote",
+    "投票时显示的名字",
+    "投票する名前"
+  ],
+  "voteSaved": [
+    "Your vote is saved.",
+    "投票已保存。",
+    "投票しました。"
+  ],
+  "noPolls": [
+    "Create a vote for this group.",
+    "为这个房间发起投票。",
+    "このグループで投票を作ろう。"
+  ],
+  "invalidPoll": [
+    "Add a question and 2–12 different options.",
+    "请填写问题和 2–12 个不同选项。",
+    "質問と異なる選択肢を2〜12個入力してください。"
+  ],
+  "pollLimit": [
+    "This room already has 10 votes.",
+    "每个房间最多 10 个投票。",
+    "1ルーム10件までです。"
+  ],
+  "routesTab": [
+    "Route",
+    "路线",
+    "ルート"
+  ],
+  "routeOrigin": [
+    "Meeting point / starting place",
+    "集合地点／起点",
+    "集合場所・出発地"
+  ],
+  "routeStops": [
+    "Exact places, in order (one per line)",
+    "按顺序填写具体地点，每行一个",
+    "行き先を順番に1行ずつ"
+  ],
+  "routeExample": [
+    "Use full names and “Kyoto”, or paste a street address.",
+    "填写完整店名并加上京都，或直接填写地址。",
+    "正式な店名と「京都」、または住所を入力。"
+  ],
+  "routeMode": [
+    "How are you getting there?",
+    "怎么过去？",
+    "移動方法"
+  ],
+  "walking": [
+    "Walk",
+    "步行",
+    "徒歩"
+  ],
+  "bicycling": [
+    "Cycle",
+    "骑行",
+    "自転車"
+  ],
+  "transit": [
+    "Public transport",
+    "公共交通",
+    "公共交通"
+  ],
+  "driving": [
+    "Drive",
+    "驾车",
+    "車"
+  ],
+  "openRoute": [
+    "Open the full route in Google Maps",
+    "在 Google Maps 打开整条路线",
+    "Google マップでルートを開く"
+  ],
+  "saveRoute": [
+    "Save route for the group",
+    "保存给房间成员",
+    "ルートを共有保存"
+  ],
+  "routeSaved": [
+    "The route is saved for everyone.",
+    "路线已为所有成员保存。",
+    "全員にルートを保存しました。"
+  ],
+  "invalidRoute": [
+    "Add a starting point and 1–4 exact places.",
+    "请填写起点和 1–4 个具体地点。",
+    "出発地と具体的な行き先を1〜4件入力。"
+  ],
+  "transitStops": [
+    "For public transport, choose one destination at a time.",
+    "公共交通请每次选择一个终点。",
+    "公共交通は目的地を1つずつ指定してください。"
+  ],
+  "routeHonesty": [
+    "Google Maps resolves the places and calculates travel times when you open it. Automatic venue search is the next integration.",
+    "打开后由 Google Maps 识别地点并计算交通时间。自动搜索具体店铺是下一步接入功能。",
+    "開くと Google マップが場所と所要時間を確認します。お店の自動検索は次の連携機能です。"
+  ],
+  "privatePlace": [
+    "For home gatherings, share private addresses only with people you trust.",
+    "在家聚会时，请只向可信任的成员分享私人地址。",
+    "自宅の住所は信頼できるメンバーにだけ共有しましょう。"
+  ],
+  "routePlaceholder": [
+    "Full shop name, Kyoto\nNext place, Kyoto",
+    "具体店名，京都\n下一站地点，京都",
+    "正式な店名、京都\n次の行き先、京都"
+  ],
+  "routeUpdatedBy": [
+    "Updated by {name}",
+    "由 {name} 更新",
+    "{name}が更新"
+  ],
+  "cardsTitle": [
+    "A proper game night",
+    "卡牌桌游之夜",
+    "カード・ボードゲーム会"
+  ],
+  "cardsReason": [
+    "Bring your decks and choose a host or a suitable game space together.",
+    "带上卡牌，一起确定谁来招待或合适的桌游场地。",
+    "カードを持ち寄って、会場やホストを決めよう。"
+  ],
+  "cookingTitle": [
+    "Cook something together",
+    "一起做一顿饭",
+    "みんなで料理"
+  ],
+  "cookingReason": [
+    "Vote on the menu, choose a kitchen, then add a supermarket stop to the route.",
+    "先投票决定菜单、确认厨房，再把超市加入路线。",
+    "献立を投票で決め、キッチンと買い出し先を選ぼう。"
+  ],
+  "potluckTitle": [
+    "Everyone brings a little",
+    "每人带一道",
+    "持ち寄りごはん"
+  ],
+  "potluckReason": [
+    "Vote on what to bring and agree on a host or picnic spot.",
+    "投票分配食物，再确定招待者或野餐地点。",
+    "持ち寄るものを決めて、会場やピクニック場所を相談。"
+  ],
+  "picnicTitle": [
+    "Food, friends and a picnic",
+    "带上食物去野餐",
+    "みんなでピクニック"
+  ],
+  "picnicReason": [
+    "Choose a grocery stop and a picnic location, then save the route.",
+    "选择采购店和野餐地，再保存整条路线。",
+    "買い出し先と場所を選んで、ルートを保存。"
+  ],
+  "hikingTitle": [
+    "Take the group outside",
+    "一起去爬山",
+    "みんなでハイキング"
+  ],
+  "hikingReason": [
+    "Agree on a trail and meeting point, and check conditions before heading out.",
+    "确定步道和集合地点，出发前确认当天情况。",
+    "コースと集合場所を決めて、当日の状況を確認。"
+  ],
+  "drinksTitle": [
+    "A drink and a long catch-up",
+    "喝一杯，慢慢聊",
+    "飲みながら近況報告"
+  ],
+  "drinksReason": [
+    "Pick a venue that can accommodate the group, then add it as an exact stop.",
+    "挑选能接待大家的店，再把具体店名加入路线。",
+    "人数に合うお店を選び、具体的な行き先として追加。"
+  ],
+  "customTitle": [
+    "Your own kind of hangout",
+    "你们自己的聚会方式",
+    "自分たちらしい集まり"
+  ],
+  "customReason": [
+    "Use the group’s custom activities to choose a place and build a route.",
+    "根据大家的自定义项目，选好地点并排列路线。",
+    "自由入力の希望から、場所とルートを決めよう。"
+  ],
+  "planningBudget": [
+    "Suggested activity budget, not a venue quote",
+    "活动参考预算，并非店铺报价",
+    "活動予算の目安・店舗価格ではありません"
+  ],
+  "addRoute": [
+    "Choose exact places and route",
+    "选择具体地点和路线",
+    "場所とルートを決める"
+  ]
+};
+for (const [key, values] of Object.entries(additions)) {
+  en[key] = values[0]; zh[key] = values[1]; ja[key] = values[2];
+}
+en.roomFull = "This room is full (50 people).";
+zh.roomFull = "房间已满，最多 50 人。";
+ja.roomFull = "ルームは満員です（最大50人）。";
+
 export const dictionaries = { en, zh, ja };
 export function translate(language, key, values = {}) {
   let text = dictionaries[language]?.[key] ?? en[key] ?? key;

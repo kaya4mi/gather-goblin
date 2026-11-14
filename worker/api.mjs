@@ -1,4 +1,5 @@
-import { activities, makePlans } from '../web/planner.mjs';
+import { activities, makePlans, normalizePicks } from '../web/planner.mjs';
+import { createPoll, publicPoll } from '../web/polls.mjs';
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -25,6 +26,7 @@ export function publicRoom(room, token) {
   return {
     ...room,
     members: publicMembers,
+    polls: (room.polls || []).map(poll => publicPoll(poll, token)),
     me: own ? {
       id: own.id,
       followId: own.followId || '',
@@ -57,13 +59,13 @@ function updatePreferences(room, payload) {
   if (!name) return 'needName';
   if (!Number.isFinite(payload.budget) || payload.budget < 0 || payload.budget > 5000) return 'invalidBudget';
   const existing = room.members.find(member => member.token === payload.token);
-  if (!existing && room.members.length >= 20) return 'roomFull';
+  if (!existing && room.members.length >= 50) return 'roomFull';
   const member = {
     ...existing,
     id: existing?.id || crypto.randomUUID(),
     name,
     token: payload.token,
-    picks: [...new Set(Array.isArray(payload.picks) ? payload.picks.filter(pick => activities.includes(pick)) : [])],
+    picks: normalizePicks(payload.picks),
     budget: payload.budget,
     ready: true,
     avatar: Math.abs(Math.floor(Number(payload.avatar) || 0)) % 5,
@@ -129,7 +131,16 @@ export async function handleRooms(request, store) {
         area: String(payload.area || 'Yoshida Campus').slice(0, 80),
         time: String(payload.time || 'Decide together').slice(0, 80),
         members: [],
+        expectedSize: Math.max(2, Math.min(50, Math.round(Number(payload.expectedSize) || 10))),
+        purpose: payload.purpose === 'poll' ? 'poll' : 'hangout',
+        routeStops: [],
+        polls: [],
       };
+      if (payload.purpose === 'poll') {
+        const poll = createPoll(title, Array.isArray(payload.options) ? payload.options : []);
+        if (!poll) return failure('invalidPoll');
+        room.polls.push(poll);
+      }
       await store.create(code, JSON.stringify(room));
       return json(publicRoom(room, viewerToken), 201);
     }
@@ -145,6 +156,36 @@ export async function handleRooms(request, store) {
         error = updatePreferences(room, payload);
       } else if (['attendance', 'confirmAttendance'].includes(payload.action)) {
         error = updateAttendance(room, payload);
+      } else if (payload.action === 'vote') {
+        const poll = room.polls?.find(item => item.id === payload.pollId);
+        if (!poll || !poll.options.some(option => option.id === payload.optionId)) return failure('invalidPoll');
+        let member = room.members.find(person => person.token === payload.token);
+        if (!member) {
+          const name = String(payload.name || '').trim().slice(0, 30);
+          if (!name) return failure('needName');
+          if (room.members.length >= 50) return failure('roomFull');
+          member = { id: crypto.randomUUID(), token: payload.token, name, picks: [], budget: 2000,
+            ready: false, avatar: Math.abs(Number(payload.avatar) || 0) % 5, attendance: 'maybe' };
+          room.members.push(member);
+        }
+        poll.votes ||= {};
+        poll.votes[payload.token] = payload.optionId;
+      } else if (payload.action === 'createPoll') {
+        if (!room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
+        if ((room.polls || []).length >= 10) return failure('pollLimit');
+        const poll = createPoll(payload.question, Array.isArray(payload.options) ? payload.options : []);
+        if (!poll) return failure('invalidPoll');
+        room.polls ||= [];
+        room.polls.push(poll);
+      } else if (payload.action === 'saveRoute') {
+        if (!room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
+        const stops = (Array.isArray(payload.stops) ? payload.stops : []).map(stop => String(stop).trim().slice(0, 160)).filter(Boolean);
+        if (!String(payload.origin || '').trim() || !stops.length || stops.length > 4) return failure('invalidRoute');
+        room.routeOrigin = String(payload.origin).trim().slice(0, 160);
+        room.routeStops = stops;
+        room.routeMode = ['walking', 'bicycling', 'driving', 'transit'].includes(payload.mode) ? payload.mode : 'walking';
+        if (room.routeMode === 'transit' && stops.length > 1) return failure('transitStops');
+        room.routeUpdatedBy = room.members.find(member => member.token === payload.token).name;
       } else if (payload.action === 'select') {
         if (!room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
         if (!makePlans(room).some(plan => plan.id === payload.selected)) return failure('planChanged');

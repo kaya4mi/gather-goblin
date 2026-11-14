@@ -15,7 +15,10 @@ Open `http://127.0.0.1:3000`. No dependency installation or AI key is required. 
 ## What works
 
 - Create a room and share its invite link or eight-character code.
-- Save names, pixel avatars, activity preferences, budgets and notes.
+- Save names, pixel avatars, 25 activity choices, custom activities, budgets and notes.
+- Plan for groups of around ten, with up to 50 members. Show five avatars plus a count and expand the full member list.
+- Create shared lunch or custom polls from the homepage. Each device has one changeable vote per poll.
+- Save exact meeting points and up to four destinations, then open the ordered route in Google Maps. Transit supports one destination at a time.
 - Switch English, Chinese and Japanese, remembering the choice on the device.
 - Rank plans within the lowest saved budget, or pick one at random.
 - Confirm a shared plan and open neighborhood searches in Google Maps.
@@ -67,3 +70,7 @@ GitHub stores the source and its history. The hosting service runs the website a
 The development process was to define the gathering workflow, sketch the visual direction, implement room persistence, add preference rules, test concurrent changes, and then add localization and conditional attendance. AI coding assistance helped implement and refine the source. The runtime recommendation system currently uses budget and preference rules. A future AI integration will call a model from the server with verified place candidates.
 
 Current neighborhood prices are illustrative estimates. Opening hours, dietary requirements and accessibility need human confirmation. There is no automatic booking. Public event discovery and public profiles are planned for the second presentation.
+
+## Real venue and route integration
+
+The current route builder accepts exact venue names or addresses and opens Google Maps directions. It does not automatically discover or verify venues. Automatic venue selection will require a configured provider such as Google Places plus Routes, and server-side credentials. AI can then rank real candidates. Google Maps URLs need no API key, while Places/Routes require enabled billing and keys.
