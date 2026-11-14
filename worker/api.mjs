@@ -20,11 +20,12 @@ export function normalizeRoom(room) {
 }
 
 export function publicRoom(room, token) {
+  const { creatorToken, ...publicFields } = room;
   const own = room.members.find(member => member.token === token);
   const target = room.members.find(member => member.id === own?.followId);
   const publicMembers = room.members.map(({ token: secret, followId, dependencyChanged, ...member }) => member);
   return {
-    ...room,
+    ...publicFields,
     members: publicMembers,
     polls: (room.polls || []).map(poll => publicPoll(poll, token)),
     me: own ? {
@@ -59,7 +60,6 @@ function updatePreferences(room, payload) {
   if (!name) return 'needName';
   if (!Number.isFinite(payload.budget) || payload.budget < 0 || payload.budget > 5000) return 'invalidBudget';
   const existing = room.members.find(member => member.token === payload.token);
-  if (!existing && room.members.length >= 50) return 'roomFull';
   const member = {
     ...existing,
     id: existing?.id || crypto.randomUUID(),
@@ -123,21 +123,22 @@ export async function handleRooms(request, store) {
       return failure('errorGeneric');
     }
     if (payload.action === 'create') {
-      const title = String(payload.title || '').trim().slice(0, 80);
+      const title = String(payload.title || '').trim().slice(0, payload.purpose === 'poll' ? 120 : 80);
       if (!title) return failure('invalidName');
       const code = crypto.randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase();
       const room = {
         code, title,
-        area: String(payload.area || 'Yoshida Campus').slice(0, 80),
+        creatorToken: typeof payload.token === 'string' && /^[a-f0-9-]{36}$/.test(payload.token) ? payload.token : undefined,
+        area: String(payload.area || 'Yoshida Campus').slice(0, 180),
         time: String(payload.time || 'Decide together').slice(0, 80),
         members: [],
-        expectedSize: Math.max(2, Math.min(50, Math.round(Number(payload.expectedSize) || 10))),
+        expectedSize: Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, Math.round(Number(payload.expectedSize) || 10))),
         purpose: payload.purpose === 'poll' ? 'poll' : 'hangout',
         routeStops: [],
         polls: [],
       };
       if (payload.purpose === 'poll') {
-        const poll = createPoll(title, Array.isArray(payload.options) ? payload.options : []);
+        const poll = createPoll(title, Array.isArray(payload.options) ? payload.options : [], payload.kind);
         if (!poll) return failure('invalidPoll');
         room.polls.push(poll);
       }
@@ -147,7 +148,7 @@ export async function handleRooms(request, store) {
     const code = String(payload.code || '').toUpperCase();
     if (!/^[A-F0-9]{8}$/.test(code)) return failure('invalidCode');
     if (typeof payload.token !== 'string' || !/^[a-f0-9-]{36}$/.test(payload.token)) return failure('errorGeneric');
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
       const row = await store.get(code);
       if (!row) return failure('roomMissing', 404);
       const room = normalizeRoom(JSON.parse(row.data));
@@ -163,7 +164,6 @@ export async function handleRooms(request, store) {
         if (!member) {
           const name = String(payload.name || '').trim().slice(0, 30);
           if (!name) return failure('needName');
-          if (room.members.length >= 50) return failure('roomFull');
           member = { id: crypto.randomUUID(), token: payload.token, name, picks: [], budget: 2000,
             ready: false, avatar: Math.abs(Number(payload.avatar) || 0) % 5, attendance: 'maybe' };
           room.members.push(member);
@@ -171,9 +171,9 @@ export async function handleRooms(request, store) {
         poll.votes ||= {};
         poll.votes[payload.token] = payload.optionId;
       } else if (payload.action === 'createPoll') {
-        if (!room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
+        if (room.creatorToken !== payload.token && !room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
         if ((room.polls || []).length >= 10) return failure('pollLimit');
-        const poll = createPoll(payload.question, Array.isArray(payload.options) ? payload.options : []);
+        const poll = createPoll(payload.question, Array.isArray(payload.options) ? payload.options : [], payload.kind);
         if (!poll) return failure('invalidPoll');
         room.polls ||= [];
         room.polls.push(poll);

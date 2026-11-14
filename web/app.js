@@ -1,6 +1,7 @@
 import { monster, avatar, art } from './art.mjs';
 import { activities, spots, makePlans, demo, directionsUrl } from './planner.mjs';
 import { languages, translate } from './i18n.mjs';
+import { meetingPlaces, locationQuery, lunchSearchUrl } from './locations.mjs';
 
 const find = selector => document.querySelector(selector);
 function escapeHtml(value) {
@@ -26,7 +27,9 @@ const profile = {
 };
 const state = {
   view: 'home', room: null, rooms: readLocal('gg-rooms', []),
-  busy: false, rolling: false, error: '', lucky: null, showAllMembers: false,
+  busy: false, rolling: false, error: '', lucky: null, showAllMembers: false, pollOptionCount: 3,
+  lunch: { location: 'Yoshida Campus', customLocation: '', minutes: 60, budget: 1000, people: 2, maxWalk: 10, mealMinutes: 25, cuisine: 'any', preferences: '', vegetarian: false, returnToClass: true },
+  lunchResult: null, lunchError: '', lunchBusy: false,
 };
 let dialog = '';
 let dialogValues = {};
@@ -56,6 +59,7 @@ function capturePreferences() {
   if (find('#name')) profile.name = find('#name').value;
   if (find('#notes')) profile.avoid = find('#notes').value;
   if (find('#budget')) profile.budget = Number(find('#budget').value);
+  if (find('#lunch-form')) captureLunch();
 }
 function captureDialog() {
   if (!dialog) return;
@@ -88,11 +92,17 @@ async function demoRequest(payload) {
 async function post(payload) {
   const body = { ...payload, token: memberToken };
   if (state.room?.code === 'DEMO' && payload.action !== 'create') return demoRequest(body);
-  const response = await fetch('/api/rooms', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Member-Token': memberToken },
-    body: JSON.stringify(body),
-  });
+  let response;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    response = await fetch('/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Member-Token': memberToken },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 409 || attempt === 5) break;
+    await response.arrayBuffer();
+    await new Promise(resolve => setTimeout(resolve, 80 * (attempt + 1) + Math.random() * 100));
+  }
   let data;
   try { data = await response.json(); }
   catch { throw new Error('errorGeneric'); }
@@ -126,7 +136,7 @@ async function loadRoom(code) {
   try {
     const room = await fetchRoom(code.trim().toUpperCase());
     state.room = room;
-    state.view = room.purpose === 'poll' ? 'poll' : 'room';
+    state.view = state.room.purpose === 'poll' ? 'poll' : 'room';
     state.lucky = null;
     const me = ownMember();
     if (me) Object.assign(profile, { name: me.name, picks: me.picks, budget: me.budget, avatar: me.avatar, avoid: me.avoid || '' });
@@ -254,9 +264,16 @@ function plansContent() {
 }
 function pollsContent() {
   const polls = state.room.polls || [];
-  return `<section id="poll-panel"><div class="section-title"><h2>${text('votesTab')}</h2>${button('+ ' + text('createVote'), 'dialog:vote', 'white small')}</div>
-    ${!ownMember() ? `<label for="vote-name">${text('voteName')}</label><input id="vote-name" maxlength="30" value="${escapeHtml(profile.name)}" placeholder="${text('namePlaceholder')}">` : ''}
-    ${polls.length ? polls.map(poll => `<article class="panel poll-card"><h3>${escapeHtml(poll.question)}</h3><div class="poll-options">${poll.options.map(option => `<button class="poll-option ${poll.myVote === option.id ? 'voted' : ''}" data-action="vote:${poll.id}:${option.id}"><span>${escapeHtml(option.label)} ${poll.myVote === option.id ? '✓' : ''}</span><strong>${text('voteCount', { count: option.count })}</strong><span class="vote-bar" style="width:${poll.total ? option.count / poll.total * 100 : 0}%"></span></button>`).join('')}</div><p class="muted">${text('totalVotes', { count: poll.total })}</p></article>`).join('') : `<p class="muted">${text('noPolls')}</p>`}</section>`;
+  const icons = { food: '✦', activity: '✚', time: '◷', other: '✓' };
+  return `<section id="poll-panel"><div class="vote-page-heading"><div><div class="dialog-kicker">${text('voteStep')}</div><h2>${text('voteTool')}</h2><p class="muted">${text('voteIntro')}</p></div>${button('+ ' + text('editVote'), 'dialog:vote', 'white small')}</div>
+    ${!ownMember() ? `<div class="voter-identity"><label for="vote-name">${text('voteName')}</label><input id="vote-name" maxlength="30" value="${escapeHtml(profile.name)}" placeholder="${text('namePlaceholder')}"></div>` : ''}
+    ${polls.length ? `<div class="ballot-grid">${polls.map((poll, index) => {
+      const leading = Math.max(...poll.options.map(option => option.count));
+      return `<article class="ballot-card"><div class="ballot-top"><span class="ballot-icon">${icons[poll.kind || 'other']}</span><span class="label">${text((poll.kind || 'other') + 'Poll')}</span><span class="ballot-number">${String(index + 1).padStart(2, '0')}</span></div><h3>${escapeHtml(poll.question)}</h3><p class="ballot-instruction">${text('chooseVote')}</p><div class="poll-options">${poll.options.map((option, optionIndex) => {
+        const percent = poll.total ? Math.round(option.count / poll.total * 100) : 0;
+        return `<button class="poll-option ${poll.myVote === option.id ? 'voted' : ''}" aria-pressed="${poll.myVote === option.id}" data-action="vote:${poll.id}:${option.id}"><span class="option-index">${String(optionIndex + 1).padStart(2, '0')}</span><span class="option-main"><span>${escapeHtml(option.label)}</span><small>${poll.myVote === option.id ? text('yourChoice') : option.count && option.count === leading ? text('voteLeading') : text('voteCount', { count: option.count })}</small></span><strong>${percent}%</strong><span class="vote-bar" style="width:${percent}%"></span></button>`;
+      }).join('')}</div><div class="ballot-footer"><span>${text('voteTotal', { count: poll.total })}</span><span class="voted-dot ${poll.myVote ? 'has-voted' : ''}">${poll.myVote ? '✓ ' + text('saved') : text('optional')}</span></div><p class="footnote">${text('pollRules')}</p></article>`;
+    }).join('')}</div>` : `<div class="empty-vote">${monster(100)}<h3>${text('pollEmptyTitle')}</h3>${button('+ ' + text('createVote'), 'dialog:vote')}</div>`}</section>`;
 }
 function routeContent() {
   const room = state.room;
@@ -265,7 +282,7 @@ function routeContent() {
   const mode = room?.routeMode || 'walking';
   const url = directionsUrl(origin, stops, mode);
   return `<section class="panel route-panel"><h2>${text('routeTool')}</h2><p class="muted">${text('routeHint')}</p>
-    <label for="route-origin">${text('routeOrigin')}</label><input id="route-origin" maxlength="160" value="${escapeHtml(origin)}">
+    <label for="route-preset">${text('where')}</label><select id="route-preset"><option value="custom">${text('customLocation')}</option>${meetingPlaces.filter(place => place.query).map(place => `<option value="${escapeHtml(place.id)}">${text(place.id)}</option>`).join('')}</select><label for="route-origin">${text('routeOrigin')}</label><input id="route-origin" maxlength="160" value="${escapeHtml(origin)}">
     <label for="route-stops">${text('routeStops')}</label><textarea id="route-stops" rows="4" placeholder="${text('routePlaceholder')}">${escapeHtml(stops.join('\n'))}</textarea><p class="footnote">${text('routeExample')}</p>
     <label for="route-mode">${text('routeMode')}</label><select id="route-mode">${['walking', 'bicycling', 'transit', 'driving'].map(value => `<option value="${value}" ${mode === value ? 'selected' : ''}>${text(value)}</option>`).join('')}</select>
     <a id="route-link" class="btn blue full ${url ? '' : 'disabled-link'}" ${url ? `href="${escapeHtml(url)}"` : 'aria-disabled="true"'} target="_blank" rel="noreferrer">${text('openRoute')} ↗</a>
@@ -308,16 +325,16 @@ async function castVote(pollId, optionId) {
 }
 async function submitPoll(fields) {
   const question = String(fields.get('question') || '').trim();
-  const options = String(fields.get('options') || '').split('\n').map(value => value.trim()).filter(Boolean);
+  const options = fields.getAll('pollOption').map(value => String(value).trim()).filter(Boolean);
   if (!question || new Set(options).size < 2 || options.length > 12) { state.error = 'invalidPoll'; renderDialog(); return; }
   state.busy = true;
   state.error = '';
   renderDialog();
   try {
     if (state.room) {
-      state.room = await post({ action: 'createPoll', code: state.room.code, question, options });
+      state.room = await post({ action: 'createPoll', code: state.room.code, question, options, kind: fields.get('kind') });
     } else {
-      state.room = await post({ action: 'create', title: question, purpose: 'poll', options, expectedSize: 10 });
+      state.room = await post({ action: 'create', title: question, purpose: 'poll', options, kind: fields.get('kind'), expectedSize: 10 });
       rememberRoom(state.room);
       setRoomUrl(state.room.code);
     }
@@ -339,6 +356,83 @@ async function saveSharedRoute() {
   finally { state.busy = false; render(); if (dialog) renderDialog(); }
 }
 
+function locationFields(id, value, customValue = '', includeUndecided = false) {
+  const options = meetingPlaces.filter(place => includeUndecided || place.query);
+  const isCustom = !options.some(place => place.id === value);
+  return `<select id="${id}" name="${id}" data-location-select>${options.map(place => `<option value="${escapeHtml(place.id)}" ${place.id === value ? 'selected' : ''}>${text(place.id)}</option>`).join('')}<option value="custom" ${isCustom ? 'selected' : ''}>${text('customLocation')}</option></select>
+    <input id="${id}-custom" name="${id}-custom" maxlength="180" aria-label="${text('customLocation')}" placeholder="${text('locationPlaceholder')}" value="${escapeHtml(customValue || (isCustom && value !== 'custom' ? value : ''))}" ${isCustom ? 'required' : 'hidden'}>`;
+}
+function captureLunch() {
+  const form = find('#lunch-form');
+  if (!form) return;
+  const fields = new FormData(form);
+  Object.assign(state.lunch, {
+    location: String(fields.get('lunch-location') || 'Yoshida Campus'),
+    customLocation: String(fields.get('lunch-location-custom') || ''),
+    minutes: Number(fields.get('minutes')), budget: Number(fields.get('budget')),
+    people: Number(fields.get('people')), maxWalk: Number(fields.get('maxWalk')),
+    mealMinutes: Number(fields.get('mealMinutes')), cuisine: String(fields.get('cuisine') || 'any'),
+    preferences: String(fields.get('preferences') || ''),
+    vegetarian: fields.has('vegetarian'), returnToClass: fields.has('returnToClass'),
+  });
+}
+function lunchPayload() {
+  return { ...state.lunch, location: state.lunch.location === 'custom' ? state.lunch.customLocation : state.lunch.location,
+    language: language === 'zh' ? 'zh-CN' : language };
+}
+function lunchContent() {
+  const form = state.lunch;
+  const cuisines = ['any', 'ramen', 'curry', 'udon', 'soba', 'japanese', 'chinese', 'western', 'cafe'];
+  const cuisineKey = value => 'cuisine' + value.charAt(0).toUpperCase() + value.slice(1);
+  return `<section class="lunch-workspace"><button class="text-button" data-action="home">← ${text('back')}</button>
+    <div class="lunch-heading"><div><div class="dialog-kicker">${text('lunchEyebrow')}</div><h1>${text('lunchTitle')}</h1><p>${text('lunchIntro')}</p></div><div class="lunch-mascot">${monster(120)}<span>✦</span></div></div>
+    <div class="lunch-layout"><form id="lunch-form" class="lunch-form"><section class="lunch-form-section"><div class="section-step"><span>01</span><h2>${text('whereNow')}</h2></div>
+      <label class="sr-only" for="lunch-location">${text('whereNow')}</label>${locationFields('lunch-location', form.location, form.customLocation)}
+      <div class="lunch-form-grid"><div><label for="lunch-minutes">${text('breakMinutes')}</label><div class="number-suffix"><input id="lunch-minutes" name="minutes" type="number" min="20" max="180" value="${form.minutes}" required><span>${text('minuteUnit')}</span></div></div>
+      <div><label for="lunch-people">${text('lunchPeople')}</label><input id="lunch-people" name="people" type="number" min="1" step="1" value="${form.people}" required></div></div>
+      </section><section class="lunch-form-section"><div class="section-step"><span>02</span><h2>${text('cuisineLabel')}</h2></div>
+      <div class="cuisine-selector" role="group" aria-label="${text('cuisineLabel')}">${cuisines.map(value => `<label class="cuisine-choice"><input type="radio" name="cuisine" value="${value}" ${form.cuisine === value ? 'checked' : ''}><span>${text(cuisineKey(value))}</span></label>`).join('')}</div>
+      <label for="lunch-preferences">${text('lunchPreferences')}</label><textarea id="lunch-preferences" name="preferences" rows="2" maxlength="200" placeholder="${text('lunchPreferencesPlaceholder')}">${escapeHtml(form.preferences)}</textarea>
+      <label class="check-row"><input type="checkbox" name="vegetarian" ${form.vegetarian ? 'checked' : ''}><span>${text('vegetarianOnly')}</span></label>
+      </section><section class="lunch-form-section"><div class="section-step"><span>03</span><h2>${text('lunchSummaryTitle')}</h2></div>
+      <div class="lunch-form-grid"><div><label for="lunch-budget">${text('lunchBudget')}</label><div class="number-suffix"><input id="lunch-budget" name="budget" type="number" min="0" max="30000" step="100" value="${form.budget}" required><span>¥</span></div></div><div><label for="lunch-walk">${text('maxWalk')}</label><div class="number-suffix"><input id="lunch-walk" name="maxWalk" type="number" min="1" max="45" value="${form.maxWalk}" required><span>${text('minuteUnit')}</span></div></div></div>
+      <label for="lunch-meal">${text('mealMinutes')}</label><div class="number-suffix"><input id="lunch-meal" name="mealMinutes" type="number" min="10" max="90" value="${form.mealMinutes}" required><span>${text('minuteUnit')}</span></div>
+      <label class="check-row"><input type="checkbox" name="returnToClass" ${form.returnToClass ? 'checked' : ''}><span>${text('returnToClass')}</span></label>
+      ${button(text(state.lunchBusy ? 'findingLunch' : 'findLunch') + ' ↗', 'submit-lunch', 'pink full', `type="submit" ${state.lunchBusy ? 'disabled' : ''}`)}</section></form>
+      <aside class="lunch-output" aria-live="polite">${lunchResultsContent()}</aside></div></section>`;
+}
+function lunchResultsContent() {
+  const payload = lunchPayload();
+  if (state.lunchBusy) return `<div class="lunch-waiting">${monster(120, 'rolling')}<h2>${text('findingLunch')}</h2></div>`;
+  const result = state.lunchResult;
+  if (state.lunchError) return `<div class="lunch-search-status"><span class="status-icon">⌖</span><h2>${text('lunchSummaryTitle')}</h2><p class="lunch-brief">${text('lunchSummary', { people: payload.people, budget: payload.budget, minutes: payload.minutes })}</p><p class="service-note">${text(state.lunchError)}</p><a class="btn blue full" href="${escapeHtml(lunchSearchUrl(payload))}" target="_blank" rel="noreferrer">${text('searchOnMaps')} ↗</a></div>`;
+  if (!result) return `<div class="lunch-empty-output"><div class="pixel-lunch-icon">✦</div><h2>${text('lunchTitle')}</h2><p>${text('lunchIntro')}</p><div class="lunch-brief"><span>⌖</span><span>${text(payload.location || 'Yoshida Campus')}</span></div><div class="brief-chips"><span>¥${payload.budget}</span><span>${payload.minutes} ${text('minuteUnit')}</span><span>${text('people', { count: payload.people })}</span></div></div>`;
+  return `<div class="lunch-results-heading"><h2>${text('lunchReady')}</h2><p>${escapeHtml(result.origin?.name)}</p><p class="footnote">${escapeHtml(result.origin?.address)}</p><span class="maps-attribution" translate="no">Google Maps</span>${googleAttributions(result.origin?.attributions)}</div>
+    ${result.places.length ? result.places.map((place, index) => `<article class="lunch-place-card"><div class="place-rank">${String(index + 1).padStart(2, '0')}</div><div class="place-heading"><h3>${escapeHtml(place.name)}</h3><span class="place-open">${text(place.openNow ? 'openNow' : 'hoursUnknown')}</span></div><p class="place-address">${escapeHtml(place.address)}</p><div class="place-metrics"><strong>${text('walkTime', { count: place.walkMinutes })}</strong><span>${text('wholeLunchTime', { count: place.totalMinutes })}</span>${payload.returnToClass ? `<small>${text('returnIncluded')}</small>` : ''}</div><div class="price-status ${place.budgetVerified ? 'verified' : ''}">${text(place.budgetVerified ? 'budgetConfirmed' : 'budgetUnknown')}${place.priceLow !== null ? ` · ¥${place.priceLow.toLocaleString()}${place.priceHigh !== null ? '–' + place.priceHigh.toLocaleString() : '+'}` : ''}</div><a class="btn ${index ? 'white' : 'pink'} full" href="${escapeHtml(place.directionsUrl)}" target="_blank" rel="noreferrer">${text('goEat')} ↗</a><p class="footnote">${text('groupCheck')}</p>${payload.vegetarian ? `<p class="footnote">${text('dietCheck')}</p>` : ''}${googleAttributions(place.attributions)}</article>`).join('') : `<div class="no-lunch-results"><h3>${text('noLunchMatch')}</h3></div>`}`;
+}
+function googleAttributions(attributions = []) {
+  return attributions.map(attribution => {
+    let url;
+    try { url = new URL(attribution.providerUri); } catch { return ''; }
+    if (url.protocol !== 'https:') return '';
+    return `<a class="footnote" target="_blank" rel="noreferrer" href="${escapeHtml(url.href)}">${escapeHtml(attribution.provider || 'Map data')}</a>`;
+  }).join('');
+}
+async function searchLunch() {
+  captureLunch();
+  state.lunchBusy = true;
+  state.lunchError = '';
+  state.lunchResult = null;
+  render();
+  try {
+    const response = await fetch('/api/lunch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lunchPayload()) });
+    const data = await response.json();
+    if (!response.ok) state.lunchError = data.error || 'mapsServiceError';
+    else state.lunchResult = data;
+  } catch { state.lunchError = 'mapsServiceError'; }
+  finally { state.lunchBusy = false; if (state.view === 'lunch') render(); }
+}
+
 function roomContent() {
   const room = state.room;
   return `<div class="room-heading"><div><button class="text-button" data-action="home">← ${text('back')}</button><h1 class="room-title">${room.code === 'DEMO' ? text('demoTitle') : escapeHtml(room.title)}</h1><p class="muted">${text(room.code === 'DEMO' ? 'demoTime' : room.time)} <span class="pink-text">✦</span> ${text(room.area)}</p></div>${monster(150, room.selected ? 'matched' : 'idle')}</div>
@@ -349,9 +443,9 @@ function roomContent() {
 function render() {
   const focusedAction = document.activeElement?.dataset.action;
   document.documentElement.lang = language === 'zh' ? 'zh-CN' : language;
-  find('#app').innerHTML = `${header()}<main><div class="topline"><span class="location"><span class="pink-text">⌖</span> ${text('location')}</span></div>${state.view === 'home' ? homeContent() : roomContent()}
+  find('#app').innerHTML = `${header()}<main><div class="topline"><span class="location"><span class="pink-text">⌖</span> ${text('location')}</span></div>${state.view === 'home' ? homeContent() : state.view === 'lunch' ? lunchContent() : roomContent()}
     ${state.error ? `<div class="inline-error" role="alert">${text(state.error)}<button aria-label="${text('close')}" data-action="clear-error">×</button></div>` : ''}
-    <footer><div class="footer-brand">${monster(28)} gathering gambling.</div><span>${text('footer')}</span></footer></main>`;
+    <footer><div class="footer-brand">${monster(28)} gathering gambling.</div><span>${text('footer')}</span><div class="footer-links"><a href="/privacy" target="_blank" rel="noreferrer">${text('privacyLink')}</a><a href="/terms" target="_blank" rel="noreferrer">${text('termsLink')}</a></div></footer></main>`;
   if (focusedAction) document.querySelector(`[data-action="${CSS.escape(focusedAction)}"]`)?.focus({ preventScroll: true });
   const offlineNotice = find('.offline-notice');
   if (offlineNotice) offlineNotice.textContent = t('offline');
@@ -359,6 +453,14 @@ function render() {
 
 function openDialog(type) {
   capturePreferences();
+  if (type === 'lunch') {
+    state.view = 'lunch';
+    state.error = '';
+    render();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (type === 'vote') state.pollOptionCount = 3;
   previousFocus = document.activeElement;
   dialog = type;
   dialogValues = {};
@@ -380,13 +482,18 @@ function renderDialog() {
   let content = '';
   if (dialog === 'route') {
     content = `<h2 id="dialog-title">${text('routeTool')}</h2>${routeContent()}`;
-  } else if (dialog === 'lunch' || dialog === 'vote') {
-    content = `<h2 id="dialog-title">${text(dialog === 'lunch' ? 'lunchTool' : 'voteTool')}</h2><form id="poll-form"><label for="poll-question">${text('pollQuestion')}</label><input id="poll-question" name="question" maxlength="120" required value="${dialog === 'lunch' ? text('lunchTool') : ''}"><label for="poll-options">${text('pollOptions')}</label><textarea id="poll-options" name="options" rows="5" required>${dialog === 'lunch' ? ['Ramen', 'Japanese food', 'Cooking together', 'Potluck'].map(t).join('\n') : ''}</textarea><p class="footnote">${text('pollOptionsHint')}</p>${button(text('createVote'), 'submit-vote', 'pink full', `type="submit" ${disabled()}`)}</form>`;
+  } else if (dialog === 'vote') {
+    content = `<div class="dialog-kicker">${text('voteStep')}</div><h2 id="dialog-title">${text('voteTool')}</h2><p class="muted">${text('voteIntro')}</p><form id="poll-form">
+      <label for="poll-kind">${text('voteKind')}</label><select id="poll-kind" name="kind">${['food', 'activity', 'time', 'other'].map(kind => `<option value="${kind}" ${kind === 'other' ? 'selected' : ''}>${text(kind + 'Poll')}</option>`).join('')}</select>
+      <label for="poll-question">${text('pollQuestion')}</label><input id="poll-question" name="question" maxlength="120" required placeholder="${text('pollQuestionPlaceholder')}">
+      <label>${text('pollOptions')}</label><div class="poll-option-editor">${Array.from({ length: state.pollOptionCount }, (_, index) => `<div class="poll-edit-row"><span>${String(index + 1).padStart(2, '0')}</span><input id="poll-option-${index}" name="pollOption" maxlength="80" required aria-label="${text('pollOptionPlaceholder', { number: index + 1 })}" placeholder="${text('pollOptionPlaceholder', { number: index + 1 })}">${state.pollOptionCount > 2 ? `<button type="button" data-action="remove-option:${index}" aria-label="${text('removeOption')}">×</button>` : ''}</div>`).join('')}</div>
+      ${state.pollOptionCount < 12 ? `<button type="button" class="add-option" data-action="add-option">+ ${text('addOption')}</button>` : ''}
+      <div class="poll-rule-note">${text('pollRules')}</div>${button(text('createVote') + ' ↗', 'submit-vote', 'pink full', `type="submit" ${disabled()}`)}</form>`;
   } else if (dialog === 'create') {
     content = `<span class="label yellow">${text('newRoom')}</span><h2 id="dialog-title">${text('startSomething')}</h2>
       <form id="create-form"><label for="room-title">${text('nameRoom')}</label><input id="room-title" name="title" required maxlength="80" placeholder="${text('demoTitle')}">
       <label for="room-time">${text('when')} <span class="muted">${text('optional')} · ${text('kyotoTime')}</span></label><input id="room-time" type="datetime-local" name="time">
-      <label for="group-size">${text('groupSize')}</label><input id="group-size" name="expectedSize" type="number" min="2" max="50" value="10" required><label for="room-area">${text('where')}</label><select id="room-area" name="area">${['Yoshida Campus', 'Hyakumanben', 'Demachiyanagi', 'Decide together'].map(area => `<option value="${area}">${text(area)}</option>`).join('')}</select>
+      <label for="group-size">${text('groupSize')}</label><input id="group-size" name="expectedSize" type="number" min="1" step="1" value="10" required><p class="footnote">${text('groupSizeHint')}</p><label for="room-area">${text('where')}</label>${locationFields('room-area', 'Yoshida Campus', '', true)}
       ${button(text(state.busy ? 'creating' : 'create') + ' ↗', 'submit-create', 'pink full', `type="submit" ${disabled()}`)}</form>`;
   } else if (dialog === 'join') {
     content = `<h2 id="dialog-title">${text('joinTitle')}</h2><form id="join-form"><label for="room-code">${text('roomCode')}</label><input id="room-code" name="code" maxlength="8" required pattern="[A-Fa-f0-9]{8}" placeholder="${text('enterCode')}" autocomplete="off" style="text-transform:uppercase">
@@ -398,9 +505,10 @@ function renderDialog() {
   } else if (spot) {
     content = `${art(spot.kind)}<h2 id="dialog-title">${text(spot.id)}</h2><p>${text(spot.id + 'Description')}</p><p class="muted">${text(spot.area)} · ${spot.price ? text('estimated') + ' ¥' + spot.price : text('free')}</p><p class="footnote">${text('examplePrices')}</p><a class="btn blue full" target="_blank" rel="noreferrer" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.query)}">${text('maps')} ↗</a>`;
   }
-  find('#dialogs').innerHTML = `<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><button class="close" id="close-dialog" aria-label="${text('close')}" data-action="close-dialog">×</button>${content}${state.error ? `<p class="error" role="alert">${text(state.error)}</p>` : ''}</section></div>`;
+  find('#dialogs').innerHTML = `<div class="overlay"><section class="modal ${dialog === 'vote' ? 'vote-dialog' : ''}" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><button class="close" id="close-dialog" aria-label="${text('close')}" data-action="close-dialog">×</button>${content}${state.error ? `<p class="error" role="alert">${text(state.error)}</p>` : ''}</section></div>`;
   restoreDialog();
   if (dialog === 'route') updateRouteLink();
+  document.querySelectorAll('[data-location-select]').forEach(select => { const custom = document.getElementById(select.id + '-custom'); custom.hidden = select.value !== 'custom'; custom.required = select.value === 'custom'; });
 }
 async function savePreferences() {
   capturePreferences();
@@ -515,6 +623,15 @@ document.addEventListener('input', event => {
   }
 });
 document.addEventListener('change', event => {
+  if (event.target.matches('[data-location-select]')) {
+    const customField = document.getElementById(event.target.id + '-custom');
+    customField.hidden = event.target.value !== 'custom';
+    customField.required = event.target.value === 'custom';
+  }
+  if (event.target.id === 'route-preset' && event.target.value !== 'custom') {
+    find('#route-origin').value = locationQuery(event.target.value);
+    updateRouteLink();
+  }
   if (event.target.id === 'route-mode') updateRouteLink();
   if (event.target.id === 'language') switchLanguage(event.target.value);
   if (event.target.id === 'attendance' && find('#follow-field')) {
@@ -526,6 +643,7 @@ const actions = {
   'toggle-members': () => { capturePreferences(); state.showAllMembers = !state.showAllMembers; render(); },
   'add-custom': addCustomActivity,
   'save-route': saveSharedRoute,
+  'add-option': () => { captureDialog(); if (state.pollOptionCount < 12) state.pollOptionCount++; renderDialog(); },
   demo: openDemo,
   'close-dialog': closeDialog,
   save: savePreferences,
@@ -550,6 +668,15 @@ document.addEventListener('click', async event => {
   const action = control.dataset.action;
   if (actions[action]) { await actions[action](); return; }
   const [kind, value, optionId] = action.split(':');
+  if (kind === 'remove-option') {
+    captureDialog();
+    const values = Array.from(document.querySelectorAll('[name="pollOption"]'), input => input.value);
+    values.splice(Number(value), 1);
+    for (let index = 0; index < state.pollOptionCount; index++) delete dialogValues['poll-option-' + index];
+    state.pollOptionCount = values.length;
+    values.forEach((entry, index) => { dialogValues['poll-option-' + index] = entry; });
+    renderDialog(); return;
+  }
   if (kind === 'vote') { await castVote(value, optionId); return; }
   if (kind === 'remove-custom') { capturePreferences(); const custom = profile.picks.filter(pick => pick.startsWith('custom:')); profile.picks = profile.picks.filter(pick => pick !== custom[Number(value)]); render(); return; }
   if (kind === 'dialog') openDialog(value);
@@ -572,6 +699,7 @@ document.addEventListener('click', async event => {
   }
 });
 document.addEventListener('submit', async event => {
+  if (event.target.id === 'lunch-form') { event.preventDefault(); await searchLunch(); return; }
   if (!['create-form', 'join-form', 'poll-form'].includes(event.target.id)) return;
   event.preventDefault();
   captureDialog();
@@ -585,10 +713,10 @@ document.addEventListener('submit', async event => {
     const time = String(fields.get('time') || '').replace('T', ' · ');
     state.room = await post({
       action: 'create', title: fields.get('title'),
-      time: time ? time + ' JST' : 'Decide together', area: fields.get('area'), expectedSize: Number(fields.get('expectedSize')),
+      time: time ? time + ' JST' : 'Decide together', area: fields.get('room-area') === 'custom' ? fields.get('room-area-custom') : fields.get('room-area'), expectedSize: Number(fields.get('expectedSize')),
     });
     rememberRoom(state.room);
-    state.view = room.purpose === 'poll' ? 'poll' : 'room';
+    state.view = state.room.purpose === 'poll' ? 'poll' : 'room';
     state.lucky = null;
     setRoomUrl(state.room.code);
     closeDialog();
@@ -611,7 +739,7 @@ document.addEventListener('keydown', event => {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
 });
 setInterval(async () => {
-  if (!state.room || state.room.code === 'DEMO' || polling || state.busy || dialog) return;
+  if (!state.room || state.view === 'lunch' || state.room.code === 'DEMO' || polling || state.busy || dialog) return;
   polling = true;
   const code = state.room.code;
   try {
@@ -623,6 +751,7 @@ setInterval(async () => {
       find('#group-panel').innerHTML = groupContent();
       if (!attendanceFocused) find('#attendance-panel').innerHTML = attendanceContent();
     } else if (state.view === 'poll') {
+      if (find('#poll-panel')?.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) return;
       const draftName = find('#vote-name')?.value; find('#poll-panel').outerHTML = pollsContent(); if (draftName && find('#vote-name')) find('#vote-name').value = draftName;
     } else if (state.view === 'plans' && !state.rolling) render();
   } catch { /* Transient network failures are retried on the next poll. */ }

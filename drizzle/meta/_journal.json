@@ -8,6 +8,13 @@
       "when": 1794297600000,
       "tag": "0000_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794636000000,
+      "tag": "0001_service_usage",
+      "breakpoints": true
     }
   ]
 }

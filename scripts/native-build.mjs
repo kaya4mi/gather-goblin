@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
 
 const apiSource = readFileSync('worker/api.mjs', 'utf8');
 const bundledApi = apiSource.replace(/^import .*?;\n/gm, '');
-const planner = readFileSync('web/planner.mjs', 'utf8') + '\n' + readFileSync('web/polls.mjs', 'utf8');
+const planner = readFileSync('web/planner.mjs', 'utf8') + '\n' + readFileSync('web/polls.mjs', 'utf8') + '\n' + readFileSync('web/locations.mjs', 'utf8') + '\n' + readFileSync('worker/maps.mjs', 'utf8').replace(/^import .*?;\n/gm, '');
 const assets = {};
 const files = [
   ['/', 'web/index.html', 'text/html'],
@@ -12,6 +12,9 @@ const files = [
   ['/planner.mjs', 'web/planner.mjs', 'text/javascript'],
   ['/i18n.mjs', 'web/i18n.mjs', 'text/javascript'],
   ['/polls.mjs', 'web/polls.mjs', 'text/javascript'],
+  ['/locations.mjs', 'web/locations.mjs', 'text/javascript'],
+  ['/privacy', 'web/privacy.html', 'text/html'],
+  ['/terms', 'web/terms.html', 'text/html'],
   ['/favicon.svg', 'public/favicon.svg', 'image/svg+xml'],
 ];
 for (const [url, file, mime] of files) {
@@ -26,6 +29,7 @@ const assets = ${JSON.stringify(assets)};
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/lunch') return handleLunch(request, env);
     if (url.pathname === '/api/rooms') return handleRooms(request, d1Store(env.DB));
     const asset = assets[url.pathname];
     if (!asset) return new Response('Not found', { status: 404 });

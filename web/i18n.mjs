@@ -302,9 +302,9 @@ const additions = {
     "投票の質問"
   ],
   "pollOptions": [
-    "Options, one per line",
-    "选项，每行一个",
-    "選択肢を1行ずつ"
+    "The options",
+    "投票选项",
+    "選択肢"
   ],
   "pollOptionsHint": [
     "2–12 options. Use exact shop names if you have them.",
@@ -533,6 +533,380 @@ for (const [key, values] of Object.entries(additions)) {
 en.roomFull = "This room is full (50 people).";
 zh.roomFull = "房间已满，最多 50 人。";
 ja.roomFull = "ルームは満員です（最大50人）。";
+
+const refinements = {
+  "lunchHint": [
+    "Tell us where you are and what you feel like. Get lunch ideas before the bell.",
+    "输入位置和口味，在下课前决定午饭。",
+    "今いる場所と気分から、授業前にランチを決めよう。"
+  ],
+  "lunchEyebrow": [
+    "THE BEFORE-CLASS DILEMMA",
+    "上课前，午饭别纠结",
+    "授業前の「何食べる？」"
+  ],
+  "lunchTitle": [
+    "Lunch, figured out.",
+    "午饭，帮你想好。",
+    "お昼、決めよう。"
+  ],
+  "lunchIntro": [
+    "Your location, your break, your appetite. Find a place that fits.",
+    "你在哪、空多久、想吃什么。找一家适合现在的店。",
+    "場所と休み時間と食べたいもの。今に合うお店を。"
+  ],
+  "whereNow": [
+    "Where are you starting?",
+    "你现在在哪？",
+    "どこから出発？"
+  ],
+  "customLocation": [
+    "Somewhere else…",
+    "自定义地点…",
+    "ほかの場所…"
+  ],
+  "locationPlaceholder": [
+    "Building, dorm, station or street address in Kyoto",
+    "京都的教学楼、宿舍、车站或地址",
+    "京都の建物・寮・駅・住所"
+  ],
+  "Shugakuin Dorm": [
+    "Shugakuin dorm",
+    "修学院宿舍",
+    "修学院宿舎"
+  ],
+  "breakMinutes": [
+    "Time until your next class",
+    "距离下一节课还有多久",
+    "次の授業までの時間"
+  ],
+  "minuteUnit": [
+    "minutes",
+    "分钟",
+    "分"
+  ],
+  "maxWalk": [
+    "Maximum walk, one way",
+    "单程最多走多久",
+    "片道で歩ける時間"
+  ],
+  "mealMinutes": [
+    "Time to eat",
+    "吃饭预留时间",
+    "食事に使う時間"
+  ],
+  "lunchBudget": [
+    "Budget per person",
+    "每人预算",
+    "1人の予算"
+  ],
+  "lunchPeople": [
+    "How many people?",
+    "几个人一起？",
+    "何人で行く？"
+  ],
+  "cuisineLabel": [
+    "What sounds good?",
+    "想吃什么类型？",
+    "どんな気分？"
+  ],
+  "cuisineAny": [
+    "Surprise me",
+    "帮我决定",
+    "おまかせ"
+  ],
+  "cuisineRamen": [
+    "Ramen",
+    "拉面",
+    "ラーメン"
+  ],
+  "cuisineCurry": [
+    "Curry",
+    "咖喱",
+    "カレー"
+  ],
+  "cuisineUdon": [
+    "Udon",
+    "乌冬",
+    "うどん"
+  ],
+  "cuisineSoba": [
+    "Soba",
+    "荞麦面",
+    "そば"
+  ],
+  "cuisineJapanese": [
+    "Japanese",
+    "日料／定食",
+    "和食・定食"
+  ],
+  "cuisineChinese": [
+    "Chinese",
+    "中餐",
+    "中華"
+  ],
+  "cuisineWestern": [
+    "Western",
+    "西餐",
+    "洋食"
+  ],
+  "cuisineCafe": [
+    "Café lunch",
+    "咖啡店简餐",
+    "カフェランチ"
+  ],
+  "lunchPreferences": [
+    "Anything more specific?",
+    "再具体一点？",
+    "もう少し詳しく"
+  ],
+  "lunchPreferencesPlaceholder": [
+    "e.g. curry rice, a filling set meal, takeaway",
+    "例如咖喱饭、量大的定食、可以打包",
+    "例：カレー、ボリュームのある定食、テイクアウト"
+  ],
+  "vegetarianOnly": [
+    "Vegetarian options needed",
+    "需要素食选项",
+    "ベジタリアンの選択肢が必要"
+  ],
+  "returnToClass": [
+    "Get me back to the starting point",
+    "还要返回出发地点上课",
+    "出発地に戻る時間も含める"
+  ],
+  "findLunch": [
+    "Find my lunch",
+    "帮我决定午饭",
+    "ランチを探す"
+  ],
+  "findingLunch": [
+    "Checking places and walking routes…",
+    "正在查店铺和步行路线…",
+    "お店と徒歩ルートを確認中…"
+  ],
+  "lunchSummaryTitle": [
+    "Your lunch brief",
+    "这次午饭的条件",
+    "今回のランチ条件"
+  ],
+  "lunchSummary": [
+    "{people} people · up to ¥{budget} each · {minutes} minutes",
+    "{people} 人 · 每人 ¥{budget} 以内 · {minutes} 分钟",
+    "{people}人・1人¥{budget}以内・{minutes}分"
+  ],
+  "returnIncluded": [
+    "Return walk included",
+    "包含回程时间",
+    "帰りの徒歩時間込み"
+  ],
+  "lunchReady": [
+    "Here’s where you could go",
+    "这几家可以考虑",
+    "こんなお店はどう？"
+  ],
+  "walkTime": [
+    "{count} min walk, one way",
+    "单程步行 {count} 分钟",
+    "片道徒歩{count}分"
+  ],
+  "wholeLunchTime": [
+    "About {count} min including your meal",
+    "加上吃饭约 {count} 分钟",
+    "食事を含め約{count}分"
+  ],
+  "budgetConfirmed": [
+    "Listed price range fits your budget",
+    "已列价格范围符合预算",
+    "掲載価格帯は予算内"
+  ],
+  "budgetUnknown": [
+    "Menu prices need checking",
+    "菜单价格待确认",
+    "メニュー価格の確認が必要"
+  ],
+  "openNow": [
+    "Listed as open now",
+    "地图显示目前营业",
+    "現在営業中の表示"
+  ],
+  "hoursUnknown": [
+    "Opening hours need checking",
+    "营业时间待确认",
+    "営業時間は要確認"
+  ],
+  "groupCheck": [
+    "Ask the venue about seating for your group. Waiting time is not included.",
+    "多人同行请先确认座位，计算时间未包含排队。",
+    "グループの席はお店に確認。待ち時間は含みません。"
+  ],
+  "dietCheck": [
+    "Confirm dietary needs directly with the venue.",
+    "饮食要求请直接向店铺确认。",
+    "食事の制限はお店に直接ご確認ください。"
+  ],
+  "goEat": [
+    "Take me there",
+    "就去这里，查看路线",
+    "ここへ行く・ルートを見る"
+  ],
+  "newLunchSearch": [
+    "Change my choices",
+    "调整条件",
+    "条件を変える"
+  ],
+  "noLunchMatch": [
+    "No verified routes fit these conditions. Try more time or a longer walk.",
+    "没有找到符合这些时间条件的路线，可增加用餐时间或步行范围。",
+    "条件に合うルートが見つかりません。時間や徒歩範囲を広げてみてください。"
+  ],
+  "mapsNotConfigured": [
+    "In-app place search is not enabled yet. Your choices are ready to search in Google Maps.",
+    "站内搜店还未启用。已为你组合好条件，可以先在 Google Maps 查看真实店铺。",
+    "アプリ内のお店検索は準備中。入力条件で Google マップを検索できます。"
+  ],
+  "searchOnMaps": [
+    "Find matching places on Google Maps",
+    "在 Google Maps 查符合条件的店",
+    "Google マップで条件に合うお店を探す"
+  ],
+  "mapsServiceError": [
+    "The map service could not complete this search. Please try again.",
+    "地图服务暂时没能完成搜索，请稍后重试。",
+    "地図サービスで検索できませんでした。もう一度お試しください。"
+  ],
+  "mapsRouteError": [
+    "Places were found, but walking routes could not be checked. Please try again.",
+    "已找到店铺，但步行路线暂时未能核实，请重试。",
+    "お店は見つかりましたが、徒歩ルートを確認できませんでした。"
+  ],
+  "mapsQuota": [
+    "Today’s in-app map search allowance has been reached. You can still open Google Maps.",
+    "今天的站内地图搜索额度已用完，仍可打开 Google Maps 搜索。",
+    "本日のアプリ内検索上限に達しました。Google マップで検索できます。"
+  ],
+  "locationNotFound": [
+    "We couldn’t identify that starting point. Try a full name or address.",
+    "未能识别这个起点，请填写完整名称或地址。",
+    "出発地が見つかりません。正式名称や住所をお試しください。"
+  ],
+  "locationRequired": [
+    "Please enter your starting location.",
+    "请填写出发地点。",
+    "出発地を入力してください。"
+  ],
+  "kyotoOnly": [
+    "Please choose a starting point in Kyoto for this campus tool.",
+    "这个校园工具请先选择京都范围内的起点。",
+    "このツールでは京都市内の出発地を選んでください。"
+  ],
+  "groupSizeHint": [
+    "An estimate, not a limit. More people can join later.",
+    "只是预计人数，不是人数上限，之后可以继续加入。",
+    "予定人数です。あとから何人でも参加できます。"
+  ],
+  "voteIntro": [
+    "One shared question. Everyone gets a say.",
+    "一个问题，一起决定。",
+    "ひとつの質問を、みんなで決める。"
+  ],
+  "voteStep": [
+    "MAKE A LITTLE DECISION",
+    "把小决定交给大家",
+    "小さな決めごとを一緒に"
+  ],
+  "voteKind": [
+    "What are we deciding?",
+    "这次决定什么？",
+    "何を決める？"
+  ],
+  "foodPoll": [
+    "Food & drink",
+    "吃喝",
+    "食べもの・飲みもの"
+  ],
+  "activityPoll": [
+    "An activity",
+    "玩什么",
+    "やること"
+  ],
+  "timePoll": [
+    "A time",
+    "时间",
+    "日時"
+  ],
+  "otherPoll": [
+    "Anything else",
+    "其他",
+    "その他"
+  ],
+  "pollQuestionPlaceholder": [
+    "e.g. Which game are we playing tonight?",
+    "例如今晚玩哪个卡牌游戏？",
+    "例：今夜は何のゲームをする？"
+  ],
+  "pollOptionPlaceholder": [
+    "Option {number}",
+    "选项 {number}",
+    "選択肢 {number}"
+  ],
+  "addOption": [
+    "Add an option",
+    "添加选项",
+    "選択肢を追加"
+  ],
+  "removeOption": [
+    "Remove option",
+    "删除选项",
+    "選択肢を削除"
+  ],
+  "pollRules": [
+    "One choice per person. You can change it. Share the room link to invite votes.",
+    "每人一票，可以改选。分享房间链接邀请大家投票。",
+    "1人1票・変更OK。ルームリンクでみんなを招待。"
+  ],
+  "yourChoice": [
+    "Your choice",
+    "你的选择",
+    "あなたの選択"
+  ],
+  "votePercent": [
+    "{percent}%",
+    "{percent}%",
+    "{percent}%"
+  ],
+  "voteLeading": [
+    "Leading",
+    "目前领先",
+    "現在トップ"
+  ],
+  "chooseVote": [
+    "Tap an option to vote",
+    "点击一个选项投票",
+    "選択肢をタップして投票"
+  ],
+  "voteTotal": [
+    "{count} votes so far",
+    "目前共 {count} 票",
+    "現在{count}票"
+  ],
+  "pollEmptyTitle": [
+    "A small question, a shared answer.",
+    "小问题，一起决定。",
+    "ちょっとした質問を、みんなで。"
+  ],
+  "editVote": [
+    "Create another vote",
+    "再发起一个投票",
+    "もうひとつ投票を作る"
+  ]
+};
+for (const [key, values] of Object.entries(refinements)) {
+ en[key] = values[0]; zh[key] = values[1]; ja[key] = values[2];
+}
+
+en.privacyLink='Privacy'; zh.privacyLink='隐私'; ja.privacyLink='プライバシー';
+en.termsLink='Terms'; zh.termsLink='使用说明'; ja.termsLink='利用について';
 
 export const dictionaries = { en, zh, ja };
 export function translate(language, key, values = {}) {

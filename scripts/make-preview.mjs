@@ -5,7 +5,7 @@ mkdirSync(outputDirectory, { recursive: true });
 function stripModuleSyntax(source) {
   return source.replace(/^import .*?;\n/gm, '').replace(/\bexport /g, '');
 }
-const files = ['web/art.mjs', 'web/planner.mjs', 'web/i18n.mjs', 'web/polls.mjs', 'worker/api.mjs'];
+const files = ['web/art.mjs', 'web/planner.mjs', 'web/i18n.mjs', 'web/polls.mjs', 'web/locations.mjs', 'worker/api.mjs'];
 const sharedCode = files.map(file => stripModuleSyntax(readFileSync(file, 'utf8'))).join('\n');
 const offlineAdapter = `
 const offlineKey = 'gg-offline-room-records';
@@ -23,6 +23,7 @@ const offlineStore = {
 };
 window.fetch = async (url, options = {}) => {
   const request = new Request(new URL(url, 'https://offline-preview.local'), options);
+  if (new URL(request.url).pathname === '/api/lunch') return Response.json({ error: 'mapsNotConfigured' }, { status: 503 });
   return handleRooms(request, offlineStore);
 };
 `;

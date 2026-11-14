@@ -80,3 +80,35 @@ test('custom preferences and exact shared routes are persisted', async () => {
   assert.equal(url.searchParams.get('waypoints'), 'First shop');
   assert.equal(url.searchParams.get('destination'), 'Second shop');
 });
+
+test('rooms accept more than fifty members and concurrent joins do not overwrite votes', async () => {
+  const { data: room } = await post({ action: 'create', title: 'Large collaborative room', expectedSize: 120, purpose: 'poll', options: ['A', 'B'] });
+  assert.equal(room.expectedSize, 120);
+  const tokens = Array.from({ length: 60 }, () => crypto.randomUUID());
+  for (let batch = 0; batch < 6; batch++) {
+    const results = await Promise.all(tokens.slice(batch * 10, batch * 10 + 10).map(async (token, offset) => {
+      const payload = { action: 'vote', code: room.code, token, name: 'Member ' + (batch * 10 + offset), pollId: room.polls[0].id, optionId: room.polls[0].options[offset % 2].id };
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const response = await post(payload);
+        if (response.status !== 409) return response;
+      }
+      throw Error('Concurrent update did not settle');
+    }));
+    assert.ok(results.every(result => result.status === 200));
+  }
+  const response = await handleRooms(new Request('https://example.com/api/rooms?code=' + room.code), store);
+  const saved = await response.json();
+  assert.equal(saved.members.length, 60);
+  assert.equal(saved.polls[0].total, 60);
+  assert.deepEqual(saved.polls[0].options.map(option => option.count), [30, 30]);
+});
+
+test('poll creator can add another ballot before voting and creator token stays private', async () => {
+  const token = crypto.randomUUID();
+  const { data: room } = await post({ action: 'create', token, title: 'First ballot', purpose: 'poll', options: ['A', 'B'], kind: 'activity' });
+  assert.equal(room.creatorToken, undefined);
+  const result = await post({ action: 'createPoll', token, code: room.code, question: 'Second ballot', options: ['X', 'Y'], kind: 'time' });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.polls[1].kind, 'time');
+  assert.equal(result.data.creatorToken, undefined);
+});

@@ -207,3 +207,117 @@ textarea { width: 100%; resize: vertical; padding: 14px; font: inherit; line-hei
   .inline-fields .btn { padding: 10px 13px; }
   .chips { max-height: 300px; }
 }
+
+/* Lunch finder */
+.dialog-kicker { font-size: 12px; font-weight: 750; letter-spacing: 1.4px; color: #8a3bbe; margin-bottom: 12px; }
+.lunch-workspace { padding-top: 30px; }
+.lunch-heading { display: flex; align-items: center; justify-content: space-between; gap: 30px; margin: 28px 0 35px; }
+.lunch-heading h1 { font-size: 52px; line-height: 1.1; margin-bottom: 15px; }
+.lunch-heading p { font-size: 18px; color: #6b6077; max-width: 620px; }
+.lunch-mascot { position: relative; padding: 18px 20px; background: #f5ecff; border: 2px solid var(--ink); }
+.lunch-mascot > span { color: var(--pink); position: absolute; font-size: 30px; right: -12px; top: -22px; }
+.lunch-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 30px; }
+.lunch-form { background: white; border: 2px solid var(--ink); box-shadow: 5px 5px 0 #e9d9ff; }
+.lunch-form-section { padding: 27px; }
+.lunch-form-section + .lunch-form-section { border-top: 1px solid #e8dff0; }
+.section-step { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+.section-step > span { background: var(--yellow); border: 1px solid var(--ink); width: 32px; height: 32px; display: grid; place-items: center; font-size: 13px; font-weight: 750; flex-shrink: 0; }
+.section-step h2 { font-size: 21px; }
+.lunch-form label:not(.cuisine-choice):not(.check-row) { font-size: 15px; }
+.lunch-form input, .lunch-form select, .lunch-form textarea { font-size: 17px; }
+.lunch-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.lunch-form-grid > div { min-width: 0; }
+.number-suffix { position: relative; }
+.number-suffix input { padding-right: 65px; }
+.number-suffix > span { position: absolute; right: 14px; bottom: 13px; font-size: 14px; color: #83718f; pointer-events: none; }
+.cuisine-selector { display: flex; flex-wrap: wrap; gap: 10px; }
+.cuisine-choice { position: relative; margin: 0 !important; cursor: pointer; }
+.cuisine-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; }
+.cuisine-choice > span { display: block; border: 2px solid #e1d8e9; padding: 9px 13px; font-size: 15px; background: white; }
+.cuisine-choice input:checked + span { background: #f8d9f0; border-color: var(--pink); box-shadow: 2px 2px 0 var(--pink); font-weight: 700; }
+.cuisine-choice input:focus-visible + span { outline: 3px solid var(--blue); outline-offset: 3px; }
+.check-row { display: flex !important; align-items: flex-start; gap: 11px; margin: 20px 0 0 !important; font-size: 15px !important; font-weight: 500 !important; cursor: pointer; }
+.check-row input { width: 19px !important; height: 19px; min-height: 0 !important; padding: 0 !important; margin: 3px 0 0 !important; accent-color: var(--pink); flex-shrink: 0; }
+.lunch-output { position: sticky; top: 20px; }
+.lunch-empty-output, .lunch-search-status, .lunch-waiting { padding: 35px; background: #f9f5ff; border: 2px solid #d6c7e8; min-height: 360px; }
+.lunch-empty-output h2 { font-size: 32px; margin: 30px 0 18px; }
+.lunch-empty-output p { color: #73627f; }
+.pixel-lunch-icon { width: 65px; height: 65px; background: var(--yellow); display: grid; place-items: center; font-size: 45px; color: var(--pink); border: 2px solid var(--ink); box-shadow: 4px 4px 0 #d9c6f0; }
+.lunch-brief { display: flex; align-items: center; gap: 12px; border-top: 1px solid #dfd2ed; margin-top: 25px; padding-top: 20px; font-size: 16px; }
+.brief-chips { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.brief-chips span { background: white; border: 1px solid #ddd1e9; padding: 6px 10px; font-weight: 650; }
+.lunch-waiting { text-align: center; padding-top: 65px; }
+.lunch-waiting h2 { font-size: 22px; margin-top: 30px; }
+.status-icon { font-size: 42px; color: var(--blue); }
+.lunch-search-status h2 { margin: 20px 0; font-size: 28px; }
+.service-note { padding: 18px; margin-top: 20px; background: #fff3c1; border-left: 4px solid #e8ce24; font-size: 16px; }
+.lunch-results-heading { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 20px; }
+.lunch-results-heading h2 { font-size: 28px; }
+.maps-attribution { display: inline-block; font: 400 14px Arial, sans-serif; color: #5e5e5e; margin-top: 12px; white-space: nowrap; }
+.lunch-place-card { position: relative; border: 2px solid var(--ink); padding: 27px; margin-bottom: 25px; box-shadow: 4px 4px 0 #eaddf8; background: white; }
+.place-rank { font-size: 14px; font-weight: 750; background: var(--yellow); display: inline-block; padding: 5px 10px; margin-bottom: 15px; }
+.place-heading h3 { font-size: 26px; }
+.place-open { font-size: 13px; color: #675d72; display: block; margin-top: 8px; }
+.place-address { color: #766780; font-size: 15px; margin-top: 13px; }
+.place-metrics { display: grid; gap: 5px; padding: 18px 0; margin-top: 18px; border-top: 1px solid #e7ddef; }
+.place-metrics strong { font-size: 20px; }
+.place-metrics span { font-size: 16px; }
+.place-metrics small { color: #766780; font-size: 14px; }
+.price-status { font-size: 14px; padding: 10px; background: #fff7d9; }
+.price-status.verified { background: #e6f5de; }
+.no-lunch-results { padding: 30px; border: 2px dashed #d7c5e9; background: #fcf9ff; }
+
+/* Shared ballot */
+.modal.vote-dialog { max-width: 640px; }
+.poll-option-editor { display: grid; gap: 12px; margin-top: 12px; }
+.poll-edit-row { display: flex; align-items: center; gap: 11px; }
+.poll-edit-row > span { font-size: 13px; font-weight: 750; background: #f1e6ff; width: 29px; height: 29px; display: grid; place-items: center; flex-shrink: 0; }
+.poll-edit-row input { margin: 0; flex: 1; min-width: 0; }
+.poll-edit-row button { width: 30px; height: 36px; color: #9a679a; font-size: 25px; }
+.add-option { font-size: 16px; color: #6a39ad; font-weight: 650; padding: 15px 0; margin-top: 5px; }
+.poll-rule-note { margin-top: 15px; padding: 15px 18px; background: #fff9d9; font-size: 15px; line-height: 1.7; border-left: 3px solid var(--yellow); }
+.vote-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 25px; margin-bottom: 30px; }
+.vote-page-heading h2 { font-size: 34px; margin-bottom: 10px; }
+.voter-identity { max-width: 440px; padding: 20px; background: #fbf7ff; border: 1px solid #e2d7ee; margin-bottom: 26px; }
+.voter-identity label { font-weight: 650; font-size: 16px; }
+.ballot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px; align-items: start; }
+.ballot-card { border: 2px solid var(--ink); box-shadow: 5px 5px 0 #e9ddf6; padding: 28px; min-width: 0; background: white; }
+.ballot-top { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; }
+.ballot-icon { display: grid; place-items: center; background: var(--yellow); border: 1px solid var(--ink); width: 34px; height: 34px; font-weight: 750; }
+.ballot-top .label { color: #856493; font-size: 13px; padding: 0; }
+.ballot-number { margin-left: auto; font-size: 13px; color: #9e89ae; }
+.ballot-card h3 { font-size: 28px; overflow-wrap: anywhere; line-height: 1.4; }
+.ballot-instruction { font-size: 14px; color: #81708f; margin: 13px 0 22px; }
+.ballot-card .poll-option { padding: 16px 13px; min-height: 85px; gap: 12px; }
+.option-index { display: grid; place-items: center; width: 27px; height: 27px; flex-shrink: 0; background: white; border: 1px solid #d8cae5; font-size: 12px; font-weight: 650; position: relative; z-index: 1; }
+.option-main { flex: 1; display: grid; gap: 5px; min-width: 0; z-index: 1; }
+.option-main > span { font-weight: 650; overflow-wrap: anywhere; }
+.option-main small { font-size: 12px; color: #81708f; }
+.ballot-card .voted .option-main small { color: #ca0072; }
+.ballot-card .vote-bar { opacity: .6; }
+.ballot-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #e9e1ef; margin-top: 24px; padding-top: 18px; font-size: 14px; color: #8d7a9d; }
+.voted-dot.has-voted { color: #c60077; font-weight: 650; }
+.empty-vote { border: 2px dashed #decee9; text-align: center; padding: 45px; background: #fcf9ff; }
+.empty-vote h3 { margin: 25px 0; }
+@media (max-width: 850px) {
+  .lunch-layout, .ballot-grid { grid-template-columns: 1fr; }
+  .lunch-output { position: static; }
+  .lunch-heading h1 { font-size: 42px; }
+  .lunch-heading p { font-size: 17px; }
+  .vote-page-heading { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 500px) {
+  .lunch-heading { gap: 12px; }
+  .lunch-heading h1 { font-size: 35px; }
+  .lunch-mascot { display: none; }
+  .lunch-form-section { padding: 22px 18px; }
+  .lunch-form-grid { gap: 14px; }
+  .section-step h2 { font-size: 19px; }
+  .lunch-empty-output, .lunch-search-status { padding: 25px; }
+  .ballot-card { padding: 22px 18px; }
+  .ballot-card h3 { font-size: 25px; }
+  .poll-edit-row { gap: 7px; }
+  .poll-edit-row > span { width: 24px; }
+}
+.footer-links { display: flex; gap: 18px; font-size: 13px; }
+.ballot-grid:has(> .ballot-card:only-child) { grid-template-columns: minmax(0, 760px); justify-content: center; }

@@ -16,8 +16,8 @@ Open `http://127.0.0.1:3000`. No dependency installation or AI key is required. 
 
 - Create a room and share its invite link or eight-character code.
 - Save names, pixel avatars, 25 activity choices, custom activities, budgets and notes.
-- Plan for groups of around ten, with up to 50 members. Show five avatars plus a count and expand the full member list.
-- Create shared lunch or custom polls from the homepage. Each device has one changeable vote per poll.
+- Plan for groups of around ten, without a product-level member cap. Expected size is only an estimate. Show five avatars plus a count and expand the full member list.
+- Use the independent lunch finder, or create custom shared polls from the homepage. Each device has one changeable vote per poll.
 - Save exact meeting points and up to four destinations, then open the ordered route in Google Maps. Transit supports one destination at a time.
 - Switch English, Chinese and Japanese, remembering the choice on the device.
 - Rank plans within the lowest saved budget, or pick one at random.
@@ -73,4 +73,14 @@ Current neighborhood prices are illustrative estimates. Opening hours, dietary r
 
 ## Real venue and route integration
 
-The current route builder accepts exact venue names or addresses and opens Google Maps directions. It does not automatically discover or verify venues. Automatic venue selection will require a configured provider such as Google Places plus Routes, and server-side credentials. AI can then rank real candidates. Google Maps URLs need no API key, while Places/Routes require enabled billing and keys.
+The lunch finder accepts a location, available break time, meal duration, maximum one-way walk, budget, cuisine and preferences. Its server adapter calls Google Places (New) and Routes, compares real walking durations against the break, and distinguishes confirmed price ranges from unknown menu prices. Queues, table capacity and dietary needs still require venue confirmation. No live model is connected.
+
+Google Maps URLs work without a key. In-app restaurant results require enabling Places API (New) and Routes API, billing, and a server-side `GOOGLE_MAPS_API_KEY`. Set a Google Cloud API quota. The app also defaults to 30 searches per UTC day through `GOOGLE_MAPS_DAILY_SEARCH_LIMIT`, counted atomically in D1. Each search may make one origin lookup, one restaurant lookup, and up to five route calls. The product’s daily search count is separate from Google billing quotas.
+
+For local testing, copy `.env.example` to `.env.local` and set the key there. Hosted deployment requires setting the same key as a secret in Sites and redeploying. Without a key, the interface clearly offers a Google Maps search link instead of invented restaurant results. Google-provided venue details are not persisted in room records.
+
+The database migration `0001_service_usage.sql` stores aggregate daily usage counts. The local server applies schema migrations on startup. The hosted publisher applies them during deployment.
+
+Meeting locations include Kyoto University, Hyakumanben, Demachiyanagi and Shugakuin International House, plus custom locations. Lunch search currently supports Kyoto.
+
+There is no product-level member limit. Storage, Worker memory and database quotas remain finite. Collaboration tests cover 60 independent member identities, joining and voting in concurrent groups of ten. Identity is device-based: tabs in one browser share a member token; separate devices/profiles are distinct members.
