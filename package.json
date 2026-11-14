@@ -1,0 +1,12 @@
+{
+  "name":"gathering-gambling",
+  "version":"0.1.0",
+  "private":true,
+  "type":"module",
+  "engines":{"node":">=22.13.0"},
+  "scripts":{
+    "dev":"node scripts/native-build.mjs && node scripts/local-server.mjs",
+    "build":"node scripts/native-build.mjs",
+    "test":"node --test tests/*.test.mjs"
+  }
+}
