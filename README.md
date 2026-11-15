@@ -15,13 +15,14 @@ Open `http://127.0.0.1:3000`. No dependency installation or AI key is required. 
 ## What works
 
 - Create a room and share its invite link or eight-character code.
-- Save names, pixel avatars, 25 activity choices, custom activities, budgets and notes.
+- Save names, pixel avatars, food and activity choices, custom activities, budgets and notes.
 - Plan for groups of around ten, without a product-level member cap. Expected size is only an estimate. Show five avatars plus a count and expand the full member list.
 - Use the independent lunch finder, or create custom shared polls from the homepage. Each device has one changeable vote per poll.
 - Save exact meeting points and up to four destinations, then open the ordered route in Google Maps. Transit supports one destination at a time.
 - Switch English, Chinese and Japanese, remembering the choice on the device.
-- Rank plans within the lowest saved budget, or pick one at random.
-- Confirm a shared plan and open neighborhood searches in Google Maps.
+- Summarize saved preferences in a food / activities / extras timeline with counts and member names. Leading preferences are not treated as unanimous decisions.
+- Confirm one food choice and multiple activities separately. Confirmations show who made them and need review after relevant preferences or votes change.
+- Start a prefilled vote for a timeline step, confirm a unique current result explicitly, then search actual venues in Google Maps and save an ordered route.
 - Choose “I’m in”, “Maybe”, or “If you go, I’ll go”. The selected person stays private.
 - When that person confirms, explicitly confirm your own attendance. Mutual waiting is explained. If a confirmed person changes their mind, confirmed followers return to conditional status and can reconsider.
 - Room changes refresh every four seconds. Concurrent changes use compare-and-swap writes to prevent lost updates.
@@ -36,7 +37,7 @@ Names and notes are visible to people with the room link. Device-held edit token
 | `web/i18n.mjs` | English, Chinese and Japanese text |
 | `web/style.css` | Responsive layouts and typography |
 | `web/art.mjs` | Original SVG pixel characters and scenes |
-| `web/planner.mjs` | Budget filtering and preference ranking |
+| `web/planner.mjs` | Preference categories, counts, decision freshness and Maps links |
 | `worker/api.mjs` | Validation, room persistence and attendance transitions |
 | `scripts/local-server.mjs` | Local HTTP server and SQLite adapter |
 | `scripts/native-build.mjs` | Packages the UI and API into a Cloudflare Worker |
@@ -67,9 +68,9 @@ GitHub stores the source and its history. The hosting service runs the website a
 
 ## Classroom explanation
 
-The development process was to define the gathering workflow, sketch the visual direction, implement room persistence, add preference rules, test concurrent changes, and then add localization and conditional attendance. AI coding assistance helped implement and refine the source. The runtime recommendation system currently uses budget and preference rules. A future AI integration will call a model from the server with verified place candidates.
+The development process was to define the gathering workflow, sketch the visual direction, implement room persistence, add preference rules, test concurrent changes, and then add localization and conditional attendance. AI coding assistance helped implement and refine the source. The runtime summarizes saved preferences and supports explicit shared decisions. It does not generate itineraries or call a live AI model.
 
-Current neighborhood prices are illustrative estimates. Opening hours, dietary requirements and accessibility need human confirmation. There is no automatic booking. Public event discovery and public profiles are planned for the second presentation.
+Saved budgets are discussion context, not verified venue prices. Opening hours, dietary requirements and accessibility need human confirmation. There is no automatic booking. Public event discovery and public profiles are planned for the second presentation.
 
 ## Real venue and route integration
 

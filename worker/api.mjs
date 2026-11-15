@@ -1,4 +1,4 @@
-import { activities, makePlans, normalizePicks } from '../web/planner.mjs';
+import { activities, normalizePicks, consensusCategories, preferenceCategory, consensusSummary, pollSignature } from '../web/planner.mjs';
 import { createPoll, publicPoll } from '../web/polls.mjs';
 
 function json(data, status = 200) {
@@ -175,6 +175,16 @@ export async function handleRooms(request, store) {
         if ((room.polls || []).length >= 10) return failure('pollLimit');
         const poll = createPoll(payload.question, Array.isArray(payload.options) ? payload.options : [], payload.kind);
         if (!poll) return failure('invalidPoll');
+        if (payload.consensusCategory) {
+          if (!consensusCategories.includes(payload.consensusCategory)) return failure('invalidDecision');
+          poll.consensusCategory = payload.consensusCategory;
+          poll.options.forEach((option, index) => {
+            const candidate = payload.optionPicks?.[index];
+            const valid = normalizePicks([candidate])[0];
+            option.pick = valid && preferenceCategory(valid) === poll.consensusCategory ? valid
+              : 'custom:' + poll.consensusCategory + ':' + option.label.slice(0, 60);
+          });
+        }
         room.polls ||= [];
         room.polls.push(poll);
       } else if (payload.action === 'saveRoute') {
@@ -186,10 +196,31 @@ export async function handleRooms(request, store) {
         room.routeMode = ['walking', 'bicycling', 'driving', 'transit'].includes(payload.mode) ? payload.mode : 'walking';
         if (room.routeMode === 'transit' && stops.length > 1) return failure('transitStops');
         room.routeUpdatedBy = room.members.find(member => member.token === payload.token).name;
-      } else if (payload.action === 'select') {
-        if (!room.members.some(member => member.token === payload.token)) return failure('saveFirst', 403);
-        if (!makePlans(room).some(plan => plan.id === payload.selected)) return failure('planChanged');
-        room.selected = payload.selected;
+      } else if (['confirmDecision', 'removeDecision'].includes(payload.action)) {
+        const member = room.members.find(person => person.token === payload.token && person.ready);
+        if (!member) return failure('saveFirst', 403);
+        if (!consensusCategories.includes(payload.category)) return failure('invalidDecision');
+        const step = consensusSummary(room).find(item => item.category === payload.category);
+        room.decisions ||= {};
+        const previous = room.decisions[payload.category] || [];
+        if (payload.action === 'removeDecision') {
+          room.decisions[payload.category] = previous.filter(item => item.pick !== payload.pick);
+        } else {
+          if (payload.signature !== step.signature) return failure('consensusChanged', 409);
+          let poll;
+          if (payload.pollId) {
+            poll = room.polls?.find(item => item.id === payload.pollId && item.consensusCategory === payload.category);
+            if (!poll || payload.pollSignature !== pollSignature(poll)) return failure('consensusChanged', 409);
+            const counted = poll.options.map(option => ({ ...option, count: Object.values(poll.votes || {}).filter(id => id === option.id).length }));
+            const highest = Math.max(...counted.map(option => option.count));
+            const winners = counted.filter(option => option.count === highest);
+            if (!highest || winners.length !== 1 || winners[0].pick !== payload.pick) return failure('pollUnsettled');
+          } else if (!step.options.some(option => option.pick === payload.pick)) return failure('invalidDecision');
+          const decision = { pick: payload.pick, by: member.name, at: new Date().toISOString(), signature: step.signature,
+            ...(poll ? { pollId: poll.id, pollSignature: pollSignature(poll) } : {}) };
+          if (payload.category === 'food') room.decisions.food = [decision];
+          else room.decisions[payload.category] = [...previous.filter(item => item.pick !== payload.pick), decision].slice(-12);
+        }
       } else {
         return failure('errorGeneric');
       }

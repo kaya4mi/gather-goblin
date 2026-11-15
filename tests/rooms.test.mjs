@@ -2,12 +2,31 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {handleRooms} from '../worker/api.mjs';
-import {makePlans} from '../web/planner.mjs';
+import {consensusSummary, preferenceCategory, preferenceLabel} from '../web/planner.mjs';
 const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE rooms (code TEXT PRIMARY KEY,data TEXT NOT NULL)');
 const store={get:async code=>db.prepare('SELECT data FROM rooms WHERE code=?').get(code),create:async(code,data)=>db.prepare('INSERT INTO rooms VALUES (?,?)').run(code,data),compareAndSwap:async(code,oldData,newData)=>db.prepare('UPDATE rooms SET data=? WHERE code=? AND data=?').run(newData,code,oldData).changes>0};
 const post=async b=>{const r=await handleRooms(new Request('https://example.com/api/rooms',{method:'POST',body:JSON.stringify(b)}),store);return {status:r.status,data:await r.json()}};
-test('shared room lifecycle: concurrent joins, private edit tokens, budget enforcement and confirmation',async()=>{const created=await post({action:'create',title:'Friday',area:'Yoshida'});assert.equal(created.status,201);const code=created.data.code;const alice=crypto.randomUUID(),bob=crypto.randomUUID();const [a,b]=await Promise.all([post({action:'preferences',code,token:alice,name:'Alice',picks:['Ramen'],budget:2000}),post({action:'preferences',code,token:bob,name:'Bob',picks:['Outdoors'],budget:500})]);assert.equal(a.status,200);assert.equal(b.status,200);const r=await handleRooms(new Request('https://example.com/api/rooms?code='+code),store);const data=await r.json();assert.equal(data.members.length,2);assert.ok(data.members.every(m=>!('token'in m)));const plans=makePlans(data);assert.ok(plans.length>=1);assert.ok(plans.every(plan=>plan.cost<=500));assert.equal(plans[0].cost,0);assert.equal((await post({action:'select',code,token:alice,selected:'ramen'})).status,400);assert.equal((await post({action:'select',code,token:crypto.randomUUID(),selected:'river'})).status,403);assert.equal((await post({action:'select',code,token:alice,selected:'river'})).data.selected,'river');const updated=await post({action:'preferences',code,token:bob,name:'Bob updated',picks:['Coffee'],budget:1000});assert.equal(updated.data.members.length,2);assert.equal(updated.data.selected,undefined);assert.equal(updated.data.members[1].name,'Bob updated');});
-test('input validation and zero budget',async()=>{assert.equal((await post({action:'create',title:'  '})).status,400);const {data:r}=await post({action:'create',title:'Free hangout'});assert.equal((await post({action:'preferences',code:r.code,token:crypto.randomUUID(),name:'X',budget:-1})).status,400);const {data}=await post({action:'preferences',code:r.code,token:crypto.randomUUID(),name:'X',budget:0,picks:['Ramen']});assert.ok(makePlans(data).every(p=>p.cost===0));assert.equal((await handleRooms(new Request('https://example.com/api/rooms?code=bad'),store)).status,400)});
+test('shared room preferences, concurrent joins and private edit tokens', async () => {
+  const {data:room,status}=await post({action:'create',title:'Friday',area:'Yoshida'}); assert.equal(status,201);
+  const alice=crypto.randomUUID(),bob=crypto.randomUUID();
+  const results=await Promise.all([post({action:'preferences',code:room.code,token:alice,name:'Alice',picks:['Karaoke','Indian food'],budget:2000}),post({action:'preferences',code:room.code,token:bob,name:'Bob',picks:['Karaoke','Japanese food'],budget:500})]);
+  assert.ok(results.every(result=>result.status===200));
+  const response=await handleRooms(new Request('https://example.com/api/rooms?code='+room.code),store); const data=await response.json();
+  assert.equal(data.members.length,2);assert.ok(data.members.every(member=>!('token' in member)));
+  const summary=consensusSummary(data); assert.equal(summary[1].options[0].pick,'Karaoke'); assert.equal(summary[1].options[0].count,2);
+  assert.deepEqual(summary[0].options.map(option=>option.count),[1,1]);
+  const updated=await post({action:'preferences',code:room.code,token:bob,name:'Bob updated',picks:['Coffee'],budget:1000});
+  assert.equal(updated.data.members.length,2);assert.equal(updated.data.members[1].name,'Bob updated');
+});
+test('input validation and zero budget remain valid without invented price estimates', async () => {
+  assert.equal((await post({action:'create',title:'  '})).status,400);
+  const {data:room}=await post({action:'create',title:'Free hangout'});
+  assert.equal((await post({action:'preferences',code:room.code,token:crypto.randomUUID(),name:'X',budget:-1})).status,400);
+  const {data}=await post({action:'preferences',code:room.code,token:crypto.randomUUID(),name:'X',budget:0,picks:['Karaoke']});
+  assert.equal(consensusSummary(data)[1].options[0].pick,'Karaoke');
+  assert.equal(data.members[0].budget,0);
+  assert.equal((await handleRooms(new Request('https://example.com/api/rooms?code=bad'),store)).status,400);
+});
 test('worker serves the UI and rejects unknown routes',async()=>{const {default:worker}=await import('../dist/server/index.js');const r=await worker.fetch(new Request('https://example.com/'),{});assert.equal(r.status,200);assert.match(await r.text(),/Gathering Gambling/);assert.equal((await worker.fetch(new Request('https://example.com/missing'),{})).status,404)});
 
 test('conditional attendance stays private and requires explicit confirmation', async () => {
@@ -111,4 +130,53 @@ test('poll creator can add another ballot before voting and creator token stays 
   assert.equal(result.status, 200);
   assert.equal(result.data.polls[1].kind, 'time');
   assert.equal(result.data.creatorToken, undefined);
+});
+
+
+test('timeline confirms food separately and retains multiple activities, with stale changes and membership checks', async () => {
+  const {data:room}=await post({action:'create',title:'Friday decisions'}); const code=room.code; const a=crypto.randomUUID(),b=crypto.randomUUID();
+  await post({action:'preferences',code,token:a,name:'Yuta',budget:2000,picks:['Karaoke','Card games','Indian food','custom:activity:Karting','custom:food:Thai food']});
+  let saved=(await post({action:'preferences',code,token:b,name:'Fardin',budget:1500,picks:['Karaoke','Japanese food']})).data;
+  const confirm=async(category,pick,token=a,signature=consensusSummary(saved).find(step=>step.category===category).signature)=>post({action:'confirmDecision',code,token,category,pick,signature});
+  assert.equal((await confirm('activity','Karaoke',crypto.randomUUID())).status,403);
+  assert.equal((await confirm('activity','Karaoke',a,'old')).status,409);
+  assert.equal((await confirm('activity','not a choice')).status,400);
+  assert.equal((await confirm('food','Karaoke')).status,400);
+  const [karaoke,cards]=await Promise.all([confirm('activity','Karaoke'),confirm('activity','Card games')]);
+  assert.equal(karaoke.status,200);assert.equal(cards.status,200);
+  saved=(await confirm('food','Indian food')).data;
+  assert.equal(saved.decisions.activity.length,2);assert.equal(saved.decisions.food[0].pick,'Indian food');
+  saved=(await confirm('food','Japanese food')).data;
+  assert.equal(saved.decisions.food.length,1);assert.equal(saved.decisions.food[0].pick,'Japanese food');
+  assert.equal(preferenceCategory('custom:food:Thai food'),'food');assert.equal(preferenceLabel('custom:food:Thai food'),'Thai food');
+  assert.equal(preferenceCategory('custom:Werewolf'),'activity');assert.equal(preferenceLabel('custom:Werewolf'),'Werewolf');
+  saved=(await post({action:'preferences',code,token:b,name:'Fardin',budget:1500,picks:['Karaoke','Japanese food','Movies']})).data;
+  assert.ok(consensusSummary(saved)[1].decisions.every(decision=>decision.stale));
+  assert.equal(consensusSummary(saved)[0].decisions[0].stale,false);
+  saved=(await confirm('activity','Karaoke')).data;
+  assert.equal(consensusSummary(saved)[1].decisions.find(decision=>decision.pick==='Karaoke').stale,false);
+  saved=(await post({action:'removeDecision',code,token:a,category:'activity',pick:'Karaoke'})).data;
+  assert.deepEqual(saved.decisions.activity.map(item=>item.pick),['Card games']);
+});
+
+test('linked ballot confirms a unique result explicitly, rejects ties, and tracks later vote changes', async () => {
+  const {data:room}=await post({action:'create',title:'Dinner first'}); const code=room.code;const a=crypto.randomUUID(),b=crypto.randomUUID();
+  await post({action:'preferences',code,token:a,name:'Yuta',budget:2000,picks:['Karaoke','Indian food']});
+  await post({action:'preferences',code,token:b,name:'Fardin',budget:1500,picks:['Karaoke','Japanese food']});
+  const {data:created}=await post({action:'createPoll',code,token:a,question:'Dinner?',kind:'food',consensusCategory:'food',options:['Indian food','Japanese food','Thai food'],optionPicks:['Indian food','Japanese food','']});
+  let poll=created.polls[0]; assert.equal(poll.consensusCategory,'food'); assert.equal(poll.options[2].pick,'custom:food:Thai food');
+  let saved=created;
+  const confirm=async pick=>post({action:'confirmDecision',code,token:a,category:'food',pick,signature:consensusSummary(saved)[0].signature,pollId:poll.id,pollSignature:JSON.stringify(poll.options.map(option=>[option.id,option.count]))});
+  assert.equal((await confirm('Indian food')).status,400);
+  const vote=async(token,index)=>{saved=(await post({action:'vote',code,token,name:'Member',pollId:poll.id,optionId:poll.options[index].id})).data;poll=saved.polls[0];};
+  await vote(a,0); await vote(b,1); assert.equal((await confirm('Indian food')).status,400);
+  await vote(b,0);
+  assert.equal(saved.decisions,undefined);
+  saved=(await confirm('Indian food')).data; assert.equal(consensusSummary(saved)[0].decisions[0].stale,false);
+  assert.ok(!JSON.stringify(saved).includes(a));assert.ok(!JSON.stringify(saved).includes(b));
+  await vote(b,1); assert.equal(consensusSummary(saved)[0].decisions[0].stale,true);
+  await vote(a,2);await vote(b,2);
+  saved=(await confirm('custom:food:Thai food')).data;
+  assert.equal(saved.decisions.food[0].pick,'custom:food:Thai food');
+  assert.equal(consensusSummary(saved)[0].decisions[0].stale,false);
 });
