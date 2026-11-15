@@ -46,3 +46,6 @@ yarn-error.log*
 
 # Document key names without committing credentials.
 !.env.example
+
+# Local presentation drafts
+/.slides-build/
