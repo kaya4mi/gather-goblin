@@ -1,5 +1,5 @@
 import { monster, avatar, art } from './art.mjs';
-import { activities, spots, makePlans, demo, directionsUrl } from './planner.mjs';
+import { activities, spots, demo, directionsUrl, consensusSummary, preferenceLabel, preferenceCategory } from './planner.mjs';
 import { languages, translate } from './i18n.mjs';
 import { meetingPlaces, locationQuery, lunchSearchUrl } from './locations.mjs';
 
@@ -27,7 +27,7 @@ const profile = {
 };
 const state = {
   view: 'home', room: null, rooms: readLocal('gg-rooms', []),
-  busy: false, rolling: false, error: '', lucky: null, showAllMembers: false, pollOptionCount: 3,
+  busy: false, error: '', pollContext: null, showAllMembers: false, pollOptionCount: 3,
   lunch: { location: 'Yoshida Campus', customLocation: '', minutes: 60, budget: 1000, people: 2, maxWalk: 10, mealMinutes: 25, cuisine: 'any', preferences: '', vegetarian: false, returnToClass: true },
   lunchResult: null, lunchError: '', lunchBusy: false,
 };
@@ -40,7 +40,7 @@ let demoRecord;
 
 const t = (key, values) => translate(language, key, values);
 const text = (key, values) => escapeHtml(t(key, values));
-const activityText = activity => activity.startsWith('custom:') ? escapeHtml(activity.slice(7)) : text(activity);
+const activityText = activity => activity.startsWith('custom:') ? escapeHtml(preferenceLabel(activity)) : text(activity);
 const disabled = () => state.busy ? 'disabled' : '';
 const ownMember = () => state.room?.members.find(member => member.id === state.room.me?.id);
 function button(label, action, className = 'pink', attributes = '') {
@@ -125,7 +125,6 @@ function showHome() {
   state.view = 'home';
   state.room = null;
   state.error = '';
-  state.lucky = null;
   setRoomUrl();
   render();
   window.scrollTo(0, 0);
@@ -137,8 +136,7 @@ async function loadRoom(code) {
     const room = await fetchRoom(code.trim().toUpperCase());
     state.room = room;
     state.view = state.room.purpose === 'poll' ? 'poll' : 'room';
-    state.lucky = null;
-    const me = ownMember();
+      const me = ownMember();
     if (me) Object.assign(profile, { name: me.name, picks: me.picks, budget: me.budget, avatar: me.avatar, avoid: me.avoid || '' });
     rememberRoom(room);
     closeDialog();
@@ -162,7 +160,6 @@ function openDemo() {
   state.room.members = state.room.members.map(({ token, ...member }) => member);
   state.view = 'room';
   state.error = '';
-  state.lucky = null;
   render();
   window.scrollTo(0, 0);
 }
@@ -246,21 +243,55 @@ function preferences() {
     <label>${text('avatar')}</label>${avatarPicker('avatar')}
     <label>${text('mood')}</label><div class="chips">${activities.map((activity, index) => `<button aria-pressed="${profile.picks.includes(activity)}" class="chip c${index % 3} ${profile.picks.includes(activity) ? 'checked' : ''}" data-action="pick:${index}">${text(activity)}${profile.picks.includes(activity) ? ' ✓' : ''}</button>`).join('')}</div>
     <div class="custom-chips">${profile.picks.filter(pick => pick.startsWith('custom:')).map((pick, index) => `<button class="chip checked c1" data-action="remove-custom:${index}" aria-label="${text('removeActivity')}">${activityText(pick)} ×</button>`).join('')}</div>
-    <label for="custom-activity">${text('customActivity')}</label><div class="inline-fields"><input id="custom-activity" maxlength="60" placeholder="${text('activityPlaceholder')}">${button(text('addActivity'), 'add-custom', 'white small')}</div>
+    <label for="custom-activity">${text('customActivity')}</label><div class="custom-preference-entry"><select id="custom-category" aria-label="${text('preferenceCategory')}">${['activity', 'food', 'after'].map(category => `<option value="${category}">${text('step_' + category)}</option>`).join('')}</select><div class="inline-fields"><input id="custom-activity" maxlength="60" placeholder="${text('activityPlaceholder')}">${button(text('addActivity'), 'add-custom', 'white small')}</div></div>
     <label class="budget-label" for="budget">${text('budget')} <strong id="budget-value">¥${profile.budget.toLocaleString()}</strong></label><input id="budget" type="range" min="0" max="5000" step="100" value="${profile.budget}"><div class="range-labels"><span>¥0</span><span>${text('perPerson')}</span><span>¥5,000</span></div>
     <label for="notes">${text('notes')} <span class="muted">(${text('optional')})</span></label><input id="notes" maxlength="200" value="${escapeHtml(profile.avoid)}" placeholder="${text('notesPlaceholder')}"><p class="footnote">${text('notesHint')}</p>
     ${button(text(state.busy ? 'saving' : ownMember() ? 'update' : 'save'), 'save', 'pink full', disabled())}
   </section><aside><section class="panel group-panel" id="group-panel">${groupContent()}</section>
     <section class="panel attendance-panel" id="attendance-panel">${attendanceContent()}</section>
-    <section class="roll-panel">${monster(165)}<h3>${text('readyRoll')}</h3><p>${text('rollDescription')}</p>${button('⚄ ' + text('roll'), 'roll', 'yellow full')}<span class="micro">${text('rulesPreview')}</span></section>
+    <section class="roll-panel">${monster(165)}<h3>${text('readyRoll')}</h3><p>${text('rollDescription')}</p>${button(text('roll') + ' ↗', 'roll', 'yellow full')}<span class="micro">${text('rulesPreview')}</span></section>
   </aside></div>`;
+}
+function decisionButton(category, pick, decision) {
+  const action = decision && !decision.stale ? 'remove-decision' : 'confirm-decision';
+  return button(text(decision && !decision.stale ? 'undoDecision' : decision?.stale ? 'reconfirmDecision' : 'confirmChoice'),
+    `${action}:${category}:${encodeURIComponent(pick)}`, decision && !decision.stale ? 'white small' : 'pink small', disabled());
+}
+function pollLeader(poll) {
+  const highest = Math.max(0, ...poll.options.map(option => option.count));
+  const leaders = poll.options.filter(option => option.count === highest);
+  return highest > 0 && leaders.length === 1 ? leaders[0] : null;
+}
+function linkedPollResult(poll, onTimeline = false) {
+  const leader = pollLeader(poll);
+  const step = consensusSummary(state.room).find(item => item.category === poll.consensusCategory);
+  const decision = leader && step?.decisions.find(item => item.pick === leader.pick && item.pollId === poll.id && !item.stale);
+  return `<div class="linked-poll-result"><p>${text('pollSnapshot')}</p>${leader ? `<strong>${escapeHtml(leader.label)} · ${text('voteCount', { count: leader.count })}</strong>${decision ? `<span class="decision-badge">✓ ${text('confirmed')}</span>` : button(text('confirmResult'), `confirm-result:${poll.id}`, 'yellow small', disabled())}` : `<strong>${text(poll.total ? 'pollTie' : 'pollWaiting')}</strong>`}${onTimeline ? '' : button(text('backConsensus'), 'tab:plans', 'white small')}</div>`;
 }
 function plansContent() {
   const room = state.room;
-  const plans = makePlans(room);
-  return `<section class="plans-section"><div class="section-title"><h2>${text(room.selected ? 'confirmedTitle' : 'plans')}</h2>${button('⚄ ' + text('lucky'), 'lucky', 'small white', state.rolling ? 'disabled' : '')}</div><p class="muted">${text('plansHint')}</p>
-    ${state.rolling ? `<div class="rolling-state">${monster(220, 'rolling')}<h2>${text('rolling')}</h2></div>` : plans.length ? `<div class="plan-grid">${plans.map((plan, index) => `<article class="plan-card ${room.selected === plan.id ? 'confirmed' : ''} ${state.lucky === plan.id ? 'lucky-plan' : ''}"><span class="label yellow">${text(room.selected === plan.id ? 'confirmed' : state.lucky === plan.id ? 'luckyPick' : index === 0 ? 'bestMatch' : 'anotherWay')}</span>${art(plan.kind)}<h3>${text(plan.id + 'Title')}</h3><p>${text(plan.id + 'Reason')}</p>${plan.id === 'custom' ? `<p>${plan.customPicks.map(activityText).join(' · ')}</p>` : ''}<div class="plan-cost"><strong>~¥${plan.cost.toLocaleString()}</strong><span>${text('perPerson')}</span></div><p class="micro">${text('planningBudget')}</p>${button(text(room.selected === plan.id ? 'seeYou' : 'choose'), `choose:${plan.id}`, 'pink full', state.busy || room.selected === plan.id ? 'disabled' : '')}<button class="map-link" data-action="tab:route">${text('addRoute')} ↗</button></article>`).join('')}</div>` : `<div class="empty panel">${monster(140)}<h3>${text('noPlans')}</h3>${button(text('addPicks'), 'tab:room')}</div>`}
-    <p class="footnote">${text('rulesHint')}</p></section>`;
+  const steps = consensusSummary(room);
+  const saved = room.members.filter(member => member.ready);
+  const allDecisions = steps.flatMap(step => step.decisions.filter(decision => !decision.stale));
+  return `<section class="consensus-page"><div class="consensus-heading"><div><div class="dialog-kicker">${text('consensusKicker')}</div><h2>${text('plans')}</h2><p class="muted">${text('consensusIntro')}</p></div>${monster(120)}</div>
+    <div class="consensus-overview"><strong>${text('preferencesIn', { count: saved.length, total: room.members.length })}</strong>${saved.length ? `<span>${text('budgetRange', { low: Math.min(...saved.map(member => member.budget)).toLocaleString(), high: Math.max(...saved.map(member => member.budget)).toLocaleString() })}</span>` : ''}<p>${text('consensusCounting')}</p></div>
+    <div class="consensus-timeline">${steps.map((step, index) => {
+      const poll = [...(room.polls || [])].reverse().find(item => item.consensusCategory === step.category);
+      const confirmed = step.decisions.filter(item => !item.stale);
+      return `<article class="consensus-step step-${step.category}"><span class="timeline-number">${String(index + 1).padStart(2, '0')}</span><div class="timeline-body"><header class="consensus-step-heading"><div><h3>${text('step_' + step.category)}</h3><p>${text('stepHint_' + step.category)}</p></div>${confirmed.length ? `<span class="decision-badge">✓ ${text('confirmed')}</span>` : `<span class="pending-badge">${text('stillOpen')}</span>`}</header>
+        ${confirmed.length ? `<div class="confirmed-summary">${confirmed.map(decision => `<div><strong>✓ ${activityText(decision.pick)}</strong><span>${text('decisionBy', { name: decision.by })}</span></div>`).join('')}</div>` : ''}
+        ${step.decisions.some(decision => decision.stale) ? `<p class="consensus-change">${text('decisionNeedsReview')}</p>` : ''}
+        <p class="step-response-count">${text('categoryResponses', { count: step.answered, total: step.saved })}</p>
+        ${step.options.length ? `<div class="preference-ranking">${step.options.map(option => {
+          const decision = step.decisions.find(item => item.pick === option.pick);
+          return `<div class="preference-row"><div class="preference-main"><div class="preference-label"><strong>${activityText(option.pick)}</strong>${option.count === step.saved && step.saved ? `<span class="preference-tag">${text('everyonePicked')}</span>` : option.count === step.highest ? `<span class="preference-tag">${text('mostPicked')}</span>` : ''}</div><div class="preference-meter" aria-hidden="true"><span style="width:${step.saved ? Math.round(option.count / step.saved * 100) : 0}%"></span></div><details><summary>${text('peoplePicked', { count: option.count, total: step.saved })}</summary><p>${escapeHtml(option.names.join(', '))}</p></details></div><div class="preference-confirm">${decision?.stale ? `<span>${text('needsReview')}</span>` : ''}${decisionButton(step.category, option.pick, decision)}</div></div>`;
+        }).join('')}</div>` : `<p class="step-empty">${text('noCategoryPicks')}</p>`}
+        ${step.decisions.filter(decision => !step.options.some(option => option.pick === decision.pick)).map(decision => `<div class="preference-row"><div><strong>${activityText(decision.pick)}</strong><p class="muted">${text('fromVote')}</p></div>${decisionButton(step.category, decision.pick, decision)}</div>`).join('')}
+        <div class="step-actions">${button(text(poll ? 'newStepVote' : 'voteThisStep'), `consensus-vote:${step.category}`, 'white small', disabled())}${poll ? button(text('seeStepVote'), 'tab:poll', 'white small') : ''}</div>
+        ${poll ? linkedPollResult(poll, true) : ''}
+      </div></article>`;
+    }).join('')}</div>
+    <div class="consensus-next"><div><h3>${text('nextRoute')}</h3><p>${text('routeAfterConsensus')}</p>${allDecisions.length ? `<strong>${allDecisions.map(decision => activityText(decision.pick)).join(' · ')}</strong>` : ''}</div>${button(text('addRoute') + ' ↗', 'tab:route', 'blue')}</div></section>`;
 }
 function pollsContent() {
   const polls = state.room.polls || [];
@@ -272,7 +303,7 @@ function pollsContent() {
       return `<article class="ballot-card"><div class="ballot-top"><span class="ballot-icon">${icons[poll.kind || 'other']}</span><span class="label">${text((poll.kind || 'other') + 'Poll')}</span><span class="ballot-number">${String(index + 1).padStart(2, '0')}</span></div><h3>${escapeHtml(poll.question)}</h3><p class="ballot-instruction">${text('chooseVote')}</p><div class="poll-options">${poll.options.map((option, optionIndex) => {
         const percent = poll.total ? Math.round(option.count / poll.total * 100) : 0;
         return `<button class="poll-option ${poll.myVote === option.id ? 'voted' : ''}" aria-pressed="${poll.myVote === option.id}" data-action="vote:${poll.id}:${option.id}"><span class="option-index">${String(optionIndex + 1).padStart(2, '0')}</span><span class="option-main"><span>${escapeHtml(option.label)}</span><small>${poll.myVote === option.id ? text('yourChoice') : option.count && option.count === leading ? text('voteLeading') : text('voteCount', { count: option.count })}</small></span><strong>${percent}%</strong><span class="vote-bar" style="width:${percent}%"></span></button>`;
-      }).join('')}</div><div class="ballot-footer"><span>${text('voteTotal', { count: poll.total })}</span><span class="voted-dot ${poll.myVote ? 'has-voted' : ''}">${poll.myVote ? '✓ ' + text('saved') : text('optional')}</span></div><p class="footnote">${text('pollRules')}</p></article>`;
+      }).join('')}</div><div class="ballot-footer"><span>${text('voteTotal', { count: poll.total })}</span><span class="voted-dot ${poll.myVote ? 'has-voted' : ''}">${poll.myVote ? '✓ ' + text('saved') : text('optional')}</span></div><p class="footnote">${text('pollRules')}</p>${poll.consensusCategory ? linkedPollResult(poll) : ''}</article>`;
     }).join('')}</div>` : `<div class="empty-vote">${monster(100)}<h3>${text('pollEmptyTitle')}</h3>${button('+ ' + text('createVote'), 'dialog:vote')}</div>`}</section>`;
 }
 function routeContent() {
@@ -281,7 +312,7 @@ function routeContent() {
   const stops = room?.routeStops || [];
   const mode = room?.routeMode || 'walking';
   const url = directionsUrl(origin, stops, mode);
-  return `<section class="panel route-panel"><h2>${text('routeTool')}</h2><p class="muted">${text('routeHint')}</p>
+  return `<section class="panel route-panel"><h2>${text('routeTool')}</h2><p class="muted">${text('routeHint')}</p>${routeDecisions()}
     <label for="route-preset">${text('where')}</label><select id="route-preset"><option value="custom">${text('customLocation')}</option>${meetingPlaces.filter(place => place.query).map(place => `<option value="${escapeHtml(place.id)}">${text(place.id)}</option>`).join('')}</select><label for="route-origin">${text('routeOrigin')}</label><input id="route-origin" maxlength="160" value="${escapeHtml(origin)}">
     <label for="route-stops">${text('routeStops')}</label><textarea id="route-stops" rows="4" placeholder="${text('routePlaceholder')}">${escapeHtml(stops.join('\n'))}</textarea><p class="footnote">${text('routeExample')}</p>
     <label for="route-mode">${text('routeMode')}</label><select id="route-mode">${['walking', 'bicycling', 'transit', 'driving'].map(value => `<option value="${value}" ${mode === value ? 'selected' : ''}>${text(value)}</option>`).join('')}</select>
@@ -305,7 +336,7 @@ function addCustomActivity() {
   const value = find('#custom-activity').value.trim().slice(0, 60);
   if (!value) return;
   if (profile.picks.length >= 12) { notify('pickLimit'); return; }
-  const pick = 'custom:' + value;
+  const pick = 'custom:' + (find('#custom-category')?.value || 'activity') + ':' + value;
   if (!profile.picks.includes(pick)) profile.picks.push(pick);
   render();
 }
@@ -325,14 +356,14 @@ async function castVote(pollId, optionId) {
 }
 async function submitPoll(fields) {
   const question = String(fields.get('question') || '').trim();
-  const options = fields.getAll('pollOption').map(value => String(value).trim()).filter(Boolean);
+  const options = [...new Set(fields.getAll('pollOption').map(value => String(value).trim()).filter(Boolean))];
   if (!question || new Set(options).size < 2 || options.length > 12) { state.error = 'invalidPoll'; renderDialog(); return; }
   state.busy = true;
   state.error = '';
   renderDialog();
   try {
     if (state.room) {
-      state.room = await post({ action: 'createPoll', code: state.room.code, question, options, kind: fields.get('kind') });
+      state.room = await post({ action: 'createPoll', code: state.room.code, question, options, kind: fields.get('kind'), consensusCategory: state.pollContext?.category, optionPicks: state.pollContext ? options.map(label => state.pollContext.choices.find(choice => choice.label === label)?.pick || '') : undefined });
     } else {
       state.room = await post({ action: 'create', title: question, purpose: 'poll', options, kind: fields.get('kind'), expectedSize: 10 });
       rememberRoom(state.room);
@@ -435,9 +466,9 @@ async function searchLunch() {
 
 function roomContent() {
   const room = state.room;
-  return `<div class="room-heading"><div><button class="text-button" data-action="home">← ${text('back')}</button><h1 class="room-title">${room.code === 'DEMO' ? text('demoTitle') : escapeHtml(room.title)}</h1><p class="muted">${text(room.code === 'DEMO' ? 'demoTime' : room.time)} <span class="pink-text">✦</span> ${text(room.area)}</p></div>${monster(150, room.selected ? 'matched' : 'idle')}</div>
+  return `<div class="room-heading"><div><button class="text-button" data-action="home">← ${text('back')}</button><h1 class="room-title">${room.code === 'DEMO' ? text('demoTitle') : escapeHtml(room.title)}</h1><p class="muted">${text(room.code === 'DEMO' ? 'demoTime' : room.time)} <span class="pink-text">✦</span> ${text(room.area)}</p></div>${monster(150, consensusSummary(room).some(step => step.decisions.some(decision => !decision.stale)) ? 'matched' : 'idle')}</div>
     ${room.code === 'DEMO' ? `<div class="demo-banner"><span class="label yellow">${text('demo')}</span>${text('demoBanner')}<button class="text-button" data-action="dialog:create">${text('createReal')} ↗</button></div>` : `<div class="invite-bar"><div><span class="micro">${text('roomCode')}</span> <strong>${escapeHtml(room.code)}</strong></div>${button(text('copyInvite') + ' ↗', 'invite', 'small white')}</div>`}
-    <div class="room-tabs"><button class="tab ${state.view === 'room' ? 'selected' : ''}" data-action="tab:room">${text('groupTab')}</button><button class="tab ${state.view === 'plans' ? 'selected' : ''}" data-action="tab:plans">${text('planTab')} ${room.selected ? '✓' : ''}</button><button class="tab ${state.view === 'poll' ? 'selected' : ''}" data-action="tab:poll">${text('votesTab')}</button><button class="tab ${state.view === 'route' ? 'selected' : ''}" data-action="tab:route">${text('routesTab')}</button></div>
+    <div class="room-tabs"><button class="tab ${state.view === 'room' ? 'selected' : ''}" data-action="tab:room">${text('groupTab')}</button><button class="tab ${state.view === 'plans' ? 'selected' : ''}" data-action="tab:plans">${text('planTab')} </button><button class="tab ${state.view === 'poll' ? 'selected' : ''}" data-action="tab:poll">${text('votesTab')}</button><button class="tab ${state.view === 'route' ? 'selected' : ''}" data-action="tab:route">${text('routesTab')}</button></div>
     ${state.view === 'room' ? preferences() : state.view === 'poll' ? pollsContent() : state.view === 'route' ? routeContent() : plansContent()}`;
 }
 function render() {
@@ -460,7 +491,7 @@ function openDialog(type) {
     window.scrollTo(0, 0);
     return;
   }
-  if (type === 'vote') state.pollOptionCount = 3;
+  if (type === 'vote') { state.pollOptionCount = 3; state.pollContext = null; }
   previousFocus = document.activeElement;
   dialog = type;
   dialogValues = {};
@@ -472,6 +503,7 @@ function openDialog(type) {
 function closeDialog() {
   dialog = '';
   dialogValues = {};
+  state.pollContext = null;
   find('#dialogs').innerHTML = '';
   document.body.style.overflow = '';
   if (previousFocus?.isConnected) previousFocus.focus();
@@ -483,7 +515,7 @@ function renderDialog() {
   if (dialog === 'route') {
     content = `<h2 id="dialog-title">${text('routeTool')}</h2>${routeContent()}`;
   } else if (dialog === 'vote') {
-    content = `<div class="dialog-kicker">${text('voteStep')}</div><h2 id="dialog-title">${text('voteTool')}</h2><p class="muted">${text('voteIntro')}</p><form id="poll-form">
+    content = `<div class="dialog-kicker">${text('voteStep')}</div><h2 id="dialog-title">${text('voteTool')}</h2><p class="muted">${text('voteIntro')}</p>${state.pollContext ? `<p class="vote-prefill-note">${text(consensusSummary(state.room).find(step => step.category === state.pollContext.category).options.length > 12 ? 'voteLimitHint' : 'votePrefillHint')}</p>` : ''}<form id="poll-form">
       <label for="poll-kind">${text('voteKind')}</label><select id="poll-kind" name="kind">${['food', 'activity', 'time', 'other'].map(kind => `<option value="${kind}" ${kind === 'other' ? 'selected' : ''}>${text(kind + 'Poll')}</option>`).join('')}</select>
       <label for="poll-question">${text('pollQuestion')}</label><input id="poll-question" name="question" maxlength="120" required placeholder="${text('pollQuestionPlaceholder')}">
       <label>${text('pollOptions')}</label><div class="poll-option-editor">${Array.from({ length: state.pollOptionCount }, (_, index) => `<div class="poll-edit-row"><span>${String(index + 1).padStart(2, '0')}</span><input id="poll-option-${index}" name="pollOption" maxlength="80" required aria-label="${text('pollOptionPlaceholder', { number: index + 1 })}" placeholder="${text('pollOptionPlaceholder', { number: index + 1 })}">${state.pollOptionCount > 2 ? `<button type="button" data-action="remove-option:${index}" aria-label="${text('removeOption')}">×</button>` : ''}</div>`).join('')}</div>
@@ -525,8 +557,7 @@ async function savePreferences() {
     state.room = await post({ action: 'preferences', code: state.room.code, ...profile });
     if (state.room.code !== 'DEMO') rememberRoom(state.room);
     writeLocal('gg-profile', profile);
-    state.lucky = null;
-    notify('picksSaved');
+      notify('picksSaved');
   } catch (error) {
     state.error = error.message;
   } finally {
@@ -554,38 +585,48 @@ async function saveAttendance(confirm = false) {
     render();
   }
 }
-async function choosePlan(id) {
-  capturePreferences();
-  if (!ownMember()) { state.error = 'saveFirst'; render(); return; }
-  state.busy = true;
-  state.error = '';
-  render();
-  try {
-    state.room = await post({ action: 'select', code: state.room.code, selected: id });
-    notify('planConfirmed');
-  } catch (error) {
-    state.error = error.message;
-  } finally {
-    state.busy = false;
-    render();
-  }
+function routeDecisions() {
+  if (!state.room) return '';
+  const decisions = consensusSummary(state.room).flatMap(step => step.decisions.filter(item => !item.stale));
+  if (!decisions.length) return '';
+  const area = locationQuery(state.room.area) || state.room.area || 'Kyoto University';
+  return `<div class="route-decisions"><strong>${text('confirmedChoices')}</strong><p>${text('findActualPlaces')}</p>${decisions.map(decision => {
+    const url = new URL('https://www.google.com/maps/search/');
+    url.searchParams.set('api', '1'); url.searchParams.set('query', preferenceLabel(decision.pick) + ' ' + area);
+    return `<a href="${escapeHtml(url.href)}" target="_blank" rel="noreferrer">${activityText(decision.pick)} ↗</a>`;
+  }).join('')}</div>`;
 }
-function rollPlan(lucky = false) {
+function showConsensus() {
   capturePreferences();
-  const plans = makePlans(state.room);
-  if (!plans.length) { state.error = 'needPicks'; render(); return; }
   state.view = 'plans';
   state.error = '';
-  state.rolling = true;
   render();
-  const roomCode = state.room.code;
-  setTimeout(() => {
-    state.rolling = false;
-    if (state.room?.code !== roomCode) return;
-    if (lucky) state.lucky = plans[Math.floor(Math.random() * plans.length)].id;
-    render();
-    notify(lucky ? 'luckyReady' : 'plansReady');
-  }, 900);
+  window.scrollTo(0, 0);
+}
+function startConsensusVote(category) {
+  const step = consensusSummary(state.room).find(item => item.category === category);
+  if (!step) return;
+  const choices = step.options.slice(0, 12).map(option => ({ pick: option.pick, label: option.pick.startsWith('custom:') ? preferenceLabel(option.pick) : t(option.pick) }));
+  openDialog('vote');
+  state.pollContext = { category, choices };
+  state.pollOptionCount = Math.max(2, choices.length);
+  dialogValues = { 'poll-kind': category === 'food' ? 'food' : 'activity', 'poll-question': t('question_' + category) };
+  choices.forEach((choice, index) => { dialogValues['poll-option-' + index] = choice.label; });
+  renderDialog();
+}
+async function updateDecision(category, pick, remove = false, poll = null) {
+  if (state.busy) return;
+  const step = consensusSummary(state.room).find(item => item.category === category);
+  if (!ownMember()?.ready) { state.error = 'saveFirst'; render(); return; }
+  state.busy = true;
+  state.error = '';
+  try {
+    state.room = await post({ action: remove ? 'removeDecision' : 'confirmDecision', code: state.room.code, category, pick, signature: step.signature,
+      ...(poll ? { pollId: poll.id, pollSignature: JSON.stringify(poll.options.map(option => [option.id, option.count])) } : {}) });
+    notify(remove ? 'decisionRemoved' : 'decisionSaved');
+    state.view = 'plans';
+  } catch (error) { state.error = error.message; }
+  finally { state.busy = false; render(); }
 }
 async function copyInvite() {
   const url = new URL(location.href);
@@ -649,8 +690,7 @@ const actions = {
   save: savePreferences,
   'save-attendance': () => saveAttendance(),
   'confirm-attendance': () => saveAttendance(true),
-  roll: () => rollPlan(),
-  lucky: () => rollPlan(true),
+  roll: showConsensus,
   invite: copyInvite,
   'clear-error': () => { state.error = ''; render(); },
   'save-profile': () => {
@@ -681,7 +721,9 @@ document.addEventListener('click', async event => {
   if (kind === 'remove-custom') { capturePreferences(); const custom = profile.picks.filter(pick => pick.startsWith('custom:')); profile.picks = profile.picks.filter(pick => pick !== custom[Number(value)]); render(); return; }
   if (kind === 'dialog') openDialog(value);
   if (kind === 'load') await loadRoom(value);
-  if (kind === 'choose') await choosePlan(value);
+  if (kind === 'confirm-decision' || kind === 'remove-decision') { await updateDecision(value, decodeURIComponent(optionId), kind === 'remove-decision'); return; }
+  if (kind === 'consensus-vote') { startConsensusVote(value); return; }
+  if (kind === 'confirm-result') { const poll = state.room.polls.find(item => item.id === value); const leader = poll && pollLeader(poll); if (leader) await updateDecision(poll.consensusCategory, leader.pick, false, poll); return; }
   if (kind === 'tab') { capturePreferences(); state.view = value; state.error = ''; render(); }
   if (kind === 'pick') {
     capturePreferences();
@@ -717,8 +759,7 @@ document.addEventListener('submit', async event => {
     });
     rememberRoom(state.room);
     state.view = state.room.purpose === 'poll' ? 'poll' : 'room';
-    state.lucky = null;
-    setRoomUrl(state.room.code);
+      setRoomUrl(state.room.code);
     closeDialog();
   } catch (error) {
     state.error = error.message;
@@ -753,7 +794,10 @@ setInterval(async () => {
     } else if (state.view === 'poll') {
       if (find('#poll-panel')?.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) return;
       const draftName = find('#vote-name')?.value; find('#poll-panel').outerHTML = pollsContent(); if (draftName && find('#vote-name')) find('#vote-name').value = draftName;
-    } else if (state.view === 'plans' && !state.rolling) render();
+    } else if (state.view === 'plans') {
+      if (find('.consensus-page')?.contains(document.activeElement) && document.activeElement.tagName === 'SUMMARY') return;
+      render();
+    } else if (state.view === 'route' && !find('.route-panel')?.contains(document.activeElement)) render();
   } catch { /* Transient network failures are retried on the next poll. */ }
   finally { polling = false; }
 }, 4000);
