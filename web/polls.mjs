@@ -16,6 +16,7 @@ export function publicPoll(poll, token) {
     id: poll.id,
     question: poll.question,
     kind: poll.kind || 'other',
+    consensusCategory: poll.consensusCategory || null,
     options: poll.options.map(option => ({ ...option, count: counts.filter(id => id === option.id).length })),
     total: counts.length,
     myVote: poll.votes?.[token] || null,
