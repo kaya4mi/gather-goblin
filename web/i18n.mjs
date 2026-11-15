@@ -908,6 +908,303 @@ for (const [key, values] of Object.entries(refinements)) {
 en.privacyLink='Privacy'; zh.privacyLink='隐私'; ja.privacyLink='プライバシー';
 en.termsLink='Terms'; zh.termsLink='使用说明'; ja.termsLink='利用について';
 
+
+const consensusText = {
+  "Indian food": [
+    "Indian food",
+    "印度菜",
+    "インド料理"
+  ],
+  "Chinese food": [
+    "Chinese food",
+    "中餐",
+    "中華料理"
+  ],
+  "Italian food": [
+    "Italian food",
+    "意大利菜",
+    "イタリア料理"
+  ],
+  "McDonald’s": [
+    "McDonald’s",
+    "麦当劳",
+    "マクドナルド"
+  ],
+  "planTab": [
+    "Our decisions",
+    "共同决定",
+    "みんなで決める"
+  ],
+  "readyRoll": [
+    "What do we agree on?",
+    "大家想法怎么样？",
+    "みんなの希望は？"
+  ],
+  "rollDescription": [
+    "See the preferences, confirm one step at a time, and vote where needed.",
+    "看看大家的偏好，逐项确认，有分歧再投票。",
+    "希望を見て、ひとつずつ確認。迷ったら投票へ。"
+  ],
+  "roll": [
+    "See our preferences",
+    "整理大家的偏好",
+    "みんなの希望を見る"
+  ],
+  "rulesPreview": [
+    "Saved preferences, counted together",
+    "汇总已保存的偏好",
+    "保存された希望を集計"
+  ],
+  "plans": [
+    "Our evening, step by step",
+    "我们的聚会，一项项决定",
+    "ひとつずつ、予定を決めよう"
+  ],
+  "consensusKicker": [
+    "PREFERENCES → DECISIONS",
+    "偏好 → 共同决定",
+    "希望から、みんなの予定へ"
+  ],
+  "consensusIntro": [
+    "A shared outline, not a generated itinerary. Confirm dinner, add activities, then find actual places.",
+    "先整理想法，不生成固定行程。确认吃什么、玩什么，再找具体地点。",
+    "自動の旅程ではなく、みんなの希望です。食事と遊びを決めてから、実際の場所を探しましょう。"
+  ],
+  "preferencesIn": [
+    "{count} of {total} members saved preferences",
+    "{total} 位成员中，{count} 位已保存偏好",
+    "{total}人中{count}人が希望を保存"
+  ],
+  "budgetRange": [
+    "Saved budgets: ¥{low}–¥{high} per person",
+    "已填预算：每人 ¥{low}–¥{high}",
+    "入力された予算：1人 ¥{low}〜¥{high}"
+  ],
+  "consensusCounting": [
+    "Counts include everyone with saved preferences, even if attendance is still undecided. Multiple picks are allowed. Budgets are context, not verified prices.",
+    "按已保存偏好的成员统计，包括尚未确定参加的人；每人可多选。预算仅供讨论，不代表实际价格。",
+    "参加未定でも、希望を保存した全員を集計します。複数選択できます。予算は参考で、実際の料金ではありません。"
+  ],
+  "step_food": [
+    "Dinner / food",
+    "吃什么",
+    "食事"
+  ],
+  "step_activity": [
+    "Things to do",
+    "玩什么",
+    "何をする？"
+  ],
+  "step_after": [
+    "Drinks / extras",
+    "喝点什么、其他安排",
+    "飲み物・追加の予定"
+  ],
+  "stepHint_food": [
+    "Confirm one food choice. Other food ideas can go to a vote.",
+    "先确认一个餐饮方向；有不同想法可以投票。",
+    "食事の方針をひとつ確認。意見が分かれたら投票へ。"
+  ],
+  "stepHint_activity": [
+    "One evening can include more than one activity. Confirm each separately.",
+    "一个晚上可以做不止一件事，想做的可以分别确认。",
+    "一晩に複数の活動もできます。それぞれ確認しましょう。"
+  ],
+  "stepHint_after": [
+    "Optional additions. Confirm as many as the group wants.",
+    "额外安排，可按需要分别确认。",
+    "追加の予定です。必要に応じてそれぞれ確認できます。"
+  ],
+  "stillOpen": [
+    "Still deciding",
+    "还没决定",
+    "相談中"
+  ],
+  "confirmChoice": [
+    "Confirm",
+    "确认这项",
+    "これにする"
+  ],
+  "undoDecision": [
+    "Undo confirmation",
+    "取消确认",
+    "確定を取り消す"
+  ],
+  "reconfirmDecision": [
+    "Confirm again",
+    "重新确认",
+    "もう一度確認"
+  ],
+  "decisionBy": [
+    "Confirmed by {name}",
+    "由 {name} 确认",
+    "{name}が確認"
+  ],
+  "categoryResponses": [
+    "{count} of {total} preference savers chose something here",
+    "已填偏好的 {total} 人中，{count} 人选了这类项目",
+    "希望を保存した{total}人中{count}人がこの項目を選択"
+  ],
+  "peoplePicked": [
+    "{count} of {total} picked this · who?",
+    "{total} 人中 {count} 人想选 · 查看成员",
+    "{total}人中{count}人が選択・メンバーを見る"
+  ],
+  "everyonePicked": [
+    "Everyone picked this",
+    "已填偏好的人都选了",
+    "入力した全員が選択"
+  ],
+  "mostPicked": [
+    "Most picked",
+    "最多人选",
+    "最多の希望"
+  ],
+  "noCategoryPicks": [
+    "No preferences here yet. Add yours or start a vote.",
+    "这类还没有偏好，可以补充或直接发起投票。",
+    "まだ希望がありません。追加するか投票を作れます。"
+  ],
+  "voteThisStep": [
+    "Vote on this step",
+    "这一步投票决定",
+    "この項目を投票"
+  ],
+  "newStepVote": [
+    "Create a new vote",
+    "重新发起投票",
+    "新しい投票を作る"
+  ],
+  "seeStepVote": [
+    "See votes",
+    "查看投票",
+    "投票を見る"
+  ],
+  "question_food": [
+    "What should we eat?",
+    "这次吃什么？",
+    "何を食べる？"
+  ],
+  "question_activity": [
+    "What should we do together?",
+    "这次一起玩什么？",
+    "みんなで何をする？"
+  ],
+  "question_after": [
+    "Anything else for the evening?",
+    "还有什么想安排的？",
+    "ほかに何をしたい？"
+  ],
+  "pollSnapshot": [
+    "Current votes only. Confirming is a group decision, not proof everyone agrees.",
+    "这是当前票数，确认由成员操作，不代表全员已同意。",
+    "現在の投票結果です。メンバーによる確認で、全員一致を意味しません。"
+  ],
+  "confirmResult": [
+    "Confirm this result",
+    "确认这个结果",
+    "この結果で確定"
+  ],
+  "pollTie": [
+    "Tied. Keep discussing or voting.",
+    "目前平票，可以继续讨论或投票。",
+    "同票です。相談や投票を続けましょう。"
+  ],
+  "pollWaiting": [
+    "Waiting for votes",
+    "等大家投票",
+    "投票を待っています"
+  ],
+  "backConsensus": [
+    "Back to our decisions",
+    "返回共同决定",
+    "みんなの予定へ"
+  ],
+  "nextRoute": [
+    "Next: find places and save a route",
+    "下一步：找地点，保存路线",
+    "次は場所探しとルート"
+  ],
+  "routeAfterConsensus": [
+    "Dinner and activities can share one evening. Choose real places in Maps, then enter their names or addresses in order.",
+    "吃饭和活动可以放在同一个晚上。在地图选好具体地点后，按顺序填写名称或地址。",
+    "食事も遊びも同じ夜に。地図で実際の場所を選び、名前か住所を順番に入力しましょう。"
+  ],
+  "confirmedChoices": [
+    "Confirmed choices",
+    "已经确认的安排",
+    "確定した希望"
+  ],
+  "findActualPlaces": [
+    "Search each choice in Maps, then enter the actual places below.",
+    "点击去地图搜具体地点，再把选好的店名或地址填在下面。",
+    "地図で場所を探し、決まった店名や住所を下に入力してください。"
+  ],
+  "decisionSaved": [
+    "Choice confirmed for the room.",
+    "已为房间确认这项安排。",
+    "ルームの予定を確認しました。"
+  ],
+  "decisionRemoved": [
+    "Confirmation removed.",
+    "已取消这项确认。",
+    "確定を取り消しました。"
+  ],
+  "decisionNeedsReview": [
+    "Preferences or votes changed. Review the earlier confirmation before using it.",
+    "偏好或票数发生变化，之前的确认需要重新查看。",
+    "希望か投票が変わりました。以前の確定内容を見直してください。"
+  ],
+  "needsReview": [
+    "Needs another look",
+    "需要重新确认",
+    "再確認が必要"
+  ],
+  "fromVote": [
+    "An option added in the vote",
+    "投票中添加的选项",
+    "投票で追加した選択肢"
+  ],
+  "consensusChanged": [
+    "Preferences or votes just changed. Review the latest counts and confirm again.",
+    "偏好或票数刚有变化，请查看最新结果后重新确认。",
+    "希望か投票が更新されました。最新の結果を確認してください。"
+  ],
+  "invalidDecision": [
+    "Choose an option from this step.",
+    "请选择这一步里的选项。",
+    "この項目の選択肢を選んでください。"
+  ],
+  "pollUnsettled": [
+    "This vote has no single leading option yet.",
+    "投票还没有唯一领先的选项。",
+    "まだ単独で最多の選択肢がありません。"
+  ],
+  "preferenceCategory": [
+    "Preference category",
+    "偏好分类",
+    "希望の種類"
+  ],
+  "votePrefillHint": [
+    "Prefilled from this step. Edit the options before sharing. A vote supports one choice per person.",
+    "已带入这一步的偏好，可编辑选项；每人可选一项。",
+    "この項目の希望を入力済みです。編集できます。投票は1人1票です。"
+  ],
+  "voteLimitHint": [
+    "The 12 most-picked options are prefilled. Edit them to include the choices you need.",
+    "已带入人数最多的 12 个选项，可编辑成需要讨论的选项。",
+    "希望の多い12件を入力済みです。必要な選択肢に編集できます。"
+  ],
+  "saveFirst": [
+    "Save your preferences before confirming a choice.",
+    "请先保存偏好，再确认安排。",
+    "予定を確認する前に希望を保存してください。"
+  ]
+};
+for (const [key, values] of Object.entries(consensusText)) {
+  en[key] = values[0]; zh[key] = values[1]; ja[key] = values[2];
+}
+
 export const dictionaries = { en, zh, ja };
 export function translate(language, key, values = {}) {
   let text = dictionaries[language]?.[key] ?? en[key] ?? key;
